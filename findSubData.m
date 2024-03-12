@@ -16,7 +16,7 @@ assert(ischar(input), 'Fourth input was not a string! Expected a partial filenam
 % Locate data
 datdir = pths.derivatives;
 fpath = fullfile(datdir, subID, 'ses-02', 'func');
-S = {subID, 'ses-02', 'task-tricopa', ['run-', run], input};
+S = {subID, 'ses-02', 'task-tricopa', ['run-', num2str(run)], input};
 fname = strjoin(S, '_');
 output = fullfile(fpath, fname);
 

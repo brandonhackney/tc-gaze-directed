@@ -1,0 +1,12 @@
+## Generic exclusions
+# System files
+.DS_Store
+*.asv
+*~
+*.tmp
+
+# Left by RStudio
+.Rhistory
+
+## Project-specific exclusions
+# e.g. Subject data

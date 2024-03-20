@@ -13,7 +13,7 @@ end
 % Define everything else relative to p.base
 % Assuming directory structure is BIDS/derivatives/here:
 p.derivatives = fullfile(p.base, '..');
-p.bv = fullfile(p.derivatives, 'bv'); % BrainVoyager-format data
+p.bv = fullfile(p.derivatives, 'bv', 'ses-02'); % BrainVoyager-format data
 p.fs = fullfile(p.derivatives, 'sourcedata', 'freesurfer');
 
 end

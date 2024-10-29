@@ -11,8 +11,10 @@ else
 end
 
 % Define everything else relative to p.base
-% Assuming directory structure is BIDS/derivatives/here:
-p.derivatives = fullfile(p.base, '..');
+% Assuming directory structure is base/BIDS/derivatives/tc-gaze-directed:
+p.root = cd(cd(fullfile(p.base, '..', '..', '..'))); % resolve the dots
+p.source = fullfile(p.root, 'source');
+p.derivatives = fullfile(p.root, 'BIDS', 'derivatives');
 p.bv = fullfile(p.derivatives, 'bv', 'ses-02'); % BrainVoyager-format data
 p.fs = fullfile(p.derivatives, 'sourcedata', 'freesurfer');
 

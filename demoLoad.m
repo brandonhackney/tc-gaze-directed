@@ -2,7 +2,8 @@
 % Currently just loading the first run
 % Will eventually want to concatenate multiple runs
 pths = specifyPaths;
-sub = 'sub-01';
+subNum = 1;
+sub = sprintf('sub-%02.f', subNum);
 run = 1;
 name = 'hemi-R_space-fsaverage_bold.func.gii';
 fname = findSubData(pths, sub, run, name);
@@ -21,11 +22,13 @@ data = data.cdata'; % overwrite to save memory
 %% Predictors
 % To calculate betas, you need a predictor matrix and a contrast.
 % Pred should be n timepoints * p predictors, including constant
-predfname = ['*.sdm']; % need an actual name
-% See null_batchGLM line 43:56 for code to handle multiple runs
-file = xff(predfname);
-pred = file.SDMMatrix;
-file.clearobj;
+% predfname = ['*.sdm']; % need an actual name
+% % See null_batchGLM line 43:56 for code to handle multiple runs
+% file = xff(predfname);
+% pred = file.SDMMatrix;
+% file.clearobj;
+
+pred = getSDM(subNum, run);
 %% Contrast
 % This was copied verbatim from the atlas project.
 % It may be inappropriate for the current analysis, 

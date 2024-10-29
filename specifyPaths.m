@@ -14,6 +14,7 @@ end
 % Assuming directory structure is base/BIDS/derivatives/tc-gaze-directed:
 p.root = cd(cd(fullfile(p.base, '..', '..', '..'))); % resolve the dots
 p.source = fullfile(p.root, 'source');
+p.beh = fullfile(p.source, 'SES02', 'beh'); % slash sub-id slash file
 p.derivatives = fullfile(p.root, 'BIDS', 'derivatives');
 p.bv = fullfile(p.derivatives, 'bv', 'ses-02'); % BrainVoyager-format data
 p.fs = fullfile(p.derivatives, 'sourcedata', 'freesurfer');

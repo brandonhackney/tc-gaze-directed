@@ -21,5 +21,5 @@ fname = strjoin(S, '_');
 output = fullfile(fpath, fname);
 
 % Validate output before exiting
-assert(exist(output, 'file'), 'Desired file %s not found', output);
+assert(exist(output, 'file') == 2, 'Desired file %s not found', output);
 end

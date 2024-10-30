@@ -41,4 +41,4 @@ contrast = getContrastVector(size(pred,2),posInd,negInd);
 %% Calculate t-statistic map
 % This function can also generate whole-brain betas and residuals,
 % but we'll skip that for now.
-[tMap,~,~] = simpleGLM(data,pred,contrast);
+[betas, residuals] = simpleGLM(data,pred);

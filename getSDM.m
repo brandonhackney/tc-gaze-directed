@@ -32,6 +32,8 @@ tsv.stim_id = stimNames; % entire column
 motionTable = importdata('motionData.mat');
 interactTable = importdata('interactData.mat');
 ratingTable = importdata('rateData.mat');
+interactTable2 = importdata('interactVectors.mat');
+deviatTable = importdata('devData.mat');
 % ...
 
 % The above are at a different sampling rate than the MRI data,
@@ -47,7 +49,7 @@ frameCol = 0:SR:durSecs-SR; % use this to look up where to index
 
 % Now generate a predictor matrix:
 % rows are timepoints, cols are predictors
-numPreds = 5; % specify
+numPreds = 4; % specify
 sdm = zeros(numFrames, numPreds);
 for t = 1:numTrials
     stimName = tsv.stim_id{t};
@@ -72,9 +74,17 @@ for t = 1:numTrials
     col = ones([length(timeVec),1]); % a prototype
 
     % Get the stuff you need for this stim
-    motion = motionTable.MotionEnergy{strcmp(motionTable.StimName, stimName)}; % vector
+    motion2 = motionTable.MotionEnergy{strcmp(motionTable.StimName, stimName)}; % vector
+    motion = mean(motion2, 2); % I think?? scalar
     interact = interactTable.Interactivity(strcmp(interactTable.StimName, stimName)); % scalar
+    interact2 = interactTable2.Interactivity{strcmp(interactTable2.StimName, stimName)}; % vector
     rating = ratingTable.Rating(strcmp(ratingTable.StimName, stimName)); % scalar
+    deviation2 = deviatTable.Deviance{strcmp(deviatTable.StimName, stimName)}; % vector
+    
+    % Associated parameters
+    maxRating = 5;
+    maxDeviation = 1920 * 1200;
+    maxMotion = getMaxMotion(motionTable);
 
     % Now start inserting predictors from left to right
     if length(subset) ~= length(motion)
@@ -82,14 +92,19 @@ for t = 1:numTrials
         subset = onsetInd:(onsetInd + length(motion) - 1);
     end
 %     sdm(subset,1) = 1; % constant
-    sdm(subset,2) = t; % trial
-    sdm(subset,3) = motion;
-    sdm(subset,4) = interact;
-    sdm(subset,5) = rating / 5; % convert to percent
+%     sdm(subset,2) = t; % trial
+%     sdm(subset,3) = motion;
+%     sdm(subset,4) = interact;
+%     sdm(subset,5) = rating / maxRating; % convert to percent
+
+    sdm(subset,1) = motion2 ./ maxMotion;
+    sdm(subset,2) = interact2; % Binary - no need to rescale
+    sdm(subset,3) = deviation2 ./ maxDeviation;
+    sdm(subset,4) = rating / maxRating; % convert to percent
     % ...
 %     sdm = [sdm; dmat];
 end
-sdm(:,1) = 1; % constant
+% sdm(:,1) = 1; % constant
 
 % Now you have a boxcar at 60Hz that needs to be:
 % - Convolved with an HRF to produce an expected brain response

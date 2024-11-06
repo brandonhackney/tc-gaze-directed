@@ -5,8 +5,8 @@ function [output] = convertRunCol(input)
 % For example, if N = 2, it will turn [1;2] into [1 0;0 1]
 % Also removes the second-to-last column, if it's a constant (i.e. all 1s)
 % Output is then N * (M+R-2)
-    
-    if input(:,end-1) == ones(size(input,1),1)
+    numPred = width(input) - 1;
+    if numPred > 0 && input(:,end-1) == ones(size(input,1),1)
         % Remove constant column to avoid near-singular matrices
         input(:,end-1) = [];
     end
@@ -23,6 +23,11 @@ function [output] = convertRunCol(input)
     end
     % Remove columns of 0s (i.e. missing runs)
     runNums(:,flag) = [];
-    
-    output = [input(:,1:end-1) runNums];
+    % Deal out
+    if numPred > 0
+        output = [input(:,1:end-1) runNums];
+    else
+        output = runNums;
+    end
+        
 end

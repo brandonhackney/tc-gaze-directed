@@ -1,5 +1,5 @@
-function output = loadNuissance(subNum, runNum)
-% Find and import the nuissance-regressor file for this run
+function output = loadNuisance(subNum, runNum)
+% Find and import the nuisance-regressor file for this run
 pths = specifyPaths;
 subID = sprintf('sub-%02.f', subNum);
 fname = findSubData(pths, subID, runNum, 'desc-confounds_timeseries.tsv');

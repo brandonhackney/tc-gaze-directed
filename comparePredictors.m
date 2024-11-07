@@ -1,4 +1,11 @@
 function output = comparePredictors(input)
+% 1. Aggregate MRI data for all runs of a specific task 
+% 2. Regress out effects of nuisance parameters (like CSF signal)
+% 3. Estimate effect of parameters of interest on the residuals
+% 4. Use those betas to predict a timeseries for a left-out run
+% 5. Measure the similarity of predicted to actual data
+% 6. Cross-validate by leaving out each run independently
+% 7. Compare the effect of leaving each predictor out
 
 % First, concatenate all runs for one subject into one big "fullPred"
 subNum = 1;
@@ -13,11 +20,12 @@ for r = 1:numRuns
     % Get the design matrix for each run
     tmpPred = getSDM(subNum, r);
     numPredictors = width(tmpPred);
-    % May also need to insert nuissance regressors, like head motion
-    % Except they're not the same width between runs!!
-    nuissance = loadNuissance(subNum, r);
-    tmpPred = [tmpPred, nuissance];
-    numNuissance = width(nuissance);
+    % Also need to account for nuisance regressors, like head motion
+    % Except the full files are not the same width between runs!!
+    % So only grab a select few predictors
+    % And keep these separate, since we will predict in steps
+    nuisance = loadNuisance(subNum, r);
+    tmpPred = [tmpPred, nuisance];
     
     % Insert run num as a trailing column
     tmpPred(:, end+1) = r;
@@ -26,6 +34,7 @@ for r = 1:numRuns
     % Also load the actual MRI data for all runs
     dataStack{r} = loadData(subNum, r);
     % Baseline-correct each run independently
+    dataStack{r} = zscore(dataStack{r}, [], 'all');
 %     dataStack{r} = dataStack{r} - mean(dataStack{r}, 1); % subtract mean
 %     dataStack{r} = dataStack{r} ./ max(dataStack{r}, [], 1); % scale to 1
 end
@@ -43,11 +52,13 @@ for p = 1:numPredictors + 1
         % Use the full model
         pred = fullPred;
         fprintf(1, 'Full model:\n');
+        numRunPred = numPredictors;
     else
         % Ignore one of the predictors,
         % to estimate its unique contribution
         pred = fullPred(:,1:width(fullPred) ~= p);
         fprintf(1, 'Predictor %i of %i:\n', p, numPredictors);
+        numRunPred = numPredictors - 1;
     end
     % Iterate through different combinations of data
     iterFits = zeros(numRuns, numVoxels);
@@ -59,30 +70,28 @@ for p = 1:numPredictors + 1
         trainData = stackRuns(dataStack(1:numRuns ~= r));
         trainPred = pred(pred(:,end) ~= r, :);
         testPred = pred(pred(:,end) == r, :);
-        % Deal with run indicators
-        trainPred = convertRunCol(trainPred); % conv to many binary cols
-        testPred(:,end) = []; % drop the run column for the single run
-        % Get the data to be compared
-        [betas, residuals] = simpleGLM(trainData, trainPred);
+        % Convert run indicators (1 2 3 etc) to an intercept (0/1) per run
+        % But since we z-scored the data by run earlier,
+        % we don't need to keep these in trainPred:
+        % we instead use them to separate nuisance regressors by run
+        [trainPred, trainNuis] = splitRunRegressors(trainPred, numRunPred); % conv to many binary cols
+%         testPred(:,end) = []; % drop the run column for the single run
+        [testPred, testNuis] = splitRunRegressors(testPred, numRunPred);
+        % Regress out the nuisance predictors from training data
+        [~, trainResid] = simpleGLM(trainData, trainNuis);
+        % Estimate betas for the predictors of interest
+        [betas, residuals] = simpleGLM(trainResid, trainPred);
+        % Regress out nuisance from test data
         testData = dataStack{r};
-        testResid = averageRunResiduals(residuals, numTRs);
-        if p == numPredictors + 1
-            % The full model includes one more predictor than "usual"
-            % So use the actual numPredictors, not numPredictors - 1
-            % This is still different than just betas(:,:),
-            % which will include several extra nuissance regressors.
-            predictedTS = testPred * betas(1:numPredictors + numNuissance,:);
-        else
-            predictedTS = testPred * betas(1:numPredictors+numNuissance-1,:);
-            % betas above are subset to just the predictors of interest,
-            % i.e. it ignores the run number predictors.
-        end
+        [~, testResid] = simpleGLM(testData, testNuis);
+%         testResid = averageRunResiduals(residuals, numTRs);
+        predictedTS = testPred * betas; % simple
 
         % Get a signed-squared correlation b/w prediction and test data
         % Following McMahon et al 2023
         % This allows for a negative R2, 
         % when the model fits worse than a horizontal line
-        iterFits(r,:) = getR2(testData, predictedTS);
+        iterFits(r,:) = getR2(testResid, predictedTS);
 %         predCorr(j) = corr2(testData, predictedTS); % j undefined
         % Export to some variable
         fprintf(1, 'Done. ');

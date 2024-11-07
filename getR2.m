@@ -1,4 +1,4 @@
-function R2 = getR2(actual, predicted)
+function [R2, SSEout] = getR2(actual, predicted)
 % Get a "signed-squared correlation", or R^2, based on predicted data
 % Instead of using the Matlab regression functions like a normal person,
 % we're manually calculating regression based on dataset 1,
@@ -27,7 +27,10 @@ n = height(actual);
 SSR = sum((predicted - mean(actual, 1)) .^2, 1) / n;
 SST = sum((actual - mean(actual, 1)).^2, 1) / n;
 R2 = SSR ./ SST;
+SSEout = sum(SSR, 'all');
 
 % The alternative is to literally square the r value, i.e. Pearson corr
 % R2 = columncorr(actual, predicted);
+
+% OPTIONAL OUTPUT: return the SSE so you can calculate a BIC
 end

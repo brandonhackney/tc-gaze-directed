@@ -1,4 +1,4 @@
-function output = comparePredictors(subNum)
+function [output, output2] = comparePredictors(subNum)
 % 1. Aggregate MRI data for all runs of a specific task 
 % 2. Regress out effects of nuisance parameters (like CSF signal)
 % 3. Estimate effect of parameters of interest on the residuals
@@ -90,9 +90,10 @@ for p = 1:numPredictors + 1
         % Following McMahon et al 2023
         % This allows for a negative R2, 
         % when the model fits worse than a horizontal line
-        iterFits(r,:) = getR2(testResid, predictedTS);
+        [iterFits(r,:), SSE] = getR2(testResid, predictedTS);
 %         predCorr(j) = corr2(testData, predictedTS); % j undefined
         % Export to some variable
+        iterBICs = BIC(height(testResid), width(testPred), SSE);
         fprintf(1, 'Done. ');
         toc % implicitly includes a newline
     end
@@ -102,6 +103,7 @@ for p = 1:numPredictors + 1
     % Just export for now, I'll have to inspect before analyzing further.
 %     output(p) = [];
     output(:,:,p) = iterFits;
+    output2(p) = mean(iterBICs);
 end
 
 % Now after iterating over left-out predictors, compare model fits

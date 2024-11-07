@@ -1,4 +1,4 @@
-function output = comparePredictors(input)
+function output = comparePredictors(subNum)
 % 1. Aggregate MRI data for all runs of a specific task 
 % 2. Regress out effects of nuisance parameters (like CSF signal)
 % 3. Estimate effect of parameters of interest on the residuals
@@ -7,9 +7,7 @@ function output = comparePredictors(input)
 % 6. Cross-validate by leaving out each run independently
 % 7. Compare the effect of leaving each predictor out
 
-% First, concatenate all runs for one subject into one big "fullPred"
-subNum = 1;
-subID = sprintf('sub-%02.f', subNum);
+% First, concatenate all runs for this subject into one big "fullPred"
 numRuns = 8;
 fullPred = [];
 dataStack = [];
@@ -62,6 +60,7 @@ for p = 1:numPredictors + 1
     end
     % Iterate through different combinations of data
     iterFits = zeros(numRuns, numVoxels);
+    iterBICs = zeros(numRuns, 1);
     for r = 1:numRuns
         fprintf(1, '\tTesting against run %i/%i...', r, numRuns);
         tic;
@@ -102,7 +101,7 @@ for p = 1:numPredictors + 1
     % This... probably depends on the ROI?
     % Just export for now, I'll have to inspect before analyzing further.
 %     output(p) = [];
-    output{p} = iterFits;
+    output(:,:,p) = iterFits;
 end
 
 % Now after iterating over left-out predictors, compare model fits

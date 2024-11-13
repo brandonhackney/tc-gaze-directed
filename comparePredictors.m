@@ -76,10 +76,13 @@ for p = 1:numPredictors + 1
         [trainPred, trainNuis] = splitRunRegressors(trainPred, numRunPred); % conv to many binary cols
 %         testPred(:,end) = []; % drop the run column for the single run
         [testPred, testNuis] = splitRunRegressors(testPred, numRunPred);
+        % Also insert an overall intercept column
+        trainPred = [ones(height(trainPred), 1), trainPred];
+        testPred = [ones(height(testPred), 1), testPred];
         % Regress out the nuisance predictors from training data
         [~, trainResid] = simpleGLM(trainData, trainNuis);
         % Estimate betas for the predictors of interest
-        [betas, residuals] = simpleGLM(trainResid, trainPred);
+        [betas, ~] = simpleGLM(trainResid, trainPred);
         % Regress out nuisance from test data
         testData = dataStack{r};
         [~, testResid] = simpleGLM(testData, testNuis);

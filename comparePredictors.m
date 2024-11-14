@@ -1,4 +1,4 @@
-function [output, output2] = comparePredictors(subNum)
+function [output, bics] = comparePredictors(subNum)
 % 1. Aggregate MRI data for all runs of a specific task 
 % 2. Regress out effects of nuisance parameters (like CSF signal)
 % 3. Estimate effect of parameters of interest on the residuals
@@ -64,7 +64,7 @@ for p = 1:numPredictors + 1
         numRunPred = numPredictors - 1;
     end
     % Iterate through different combinations of data
-    iterFits = zeros(numRuns, numVoxels);
+    iterFits = zeros(numRuns, 1); % but will expand...
     iterBICs = zeros(numRuns, 1);
     for r = 1:numRuns
         fprintf(1, '\tTesting against run %i/%i...', r, numRuns);
@@ -104,8 +104,8 @@ for p = 1:numPredictors + 1
         % Following McMahon et al 2023
         % This allows for a negative R2, 
         % when the model fits worse than a horizontal line
-        [iterFits(r,:), SSE] = getR2(testResid, predictedTS);
-%         predCorr(j) = corr2(testData, predictedTS); % j undefined
+        [x, SSE] = getR2(testResid, predictedTS);
+        iterFits(r,1:length(x)) = x; % this helps the variable expand
         % Export to some variable
         iterBICs = BIC(height(testResid), width(testPred), SSE);
         fprintf(1, 'Done. ');
@@ -116,8 +116,8 @@ for p = 1:numPredictors + 1
     % This... probably depends on the ROI?
     % Just export for now, I'll have to inspect before analyzing further.
 %     output(p) = [];
-    output(:,:,p) = iterFits;
-    output2(p) = mean(iterBICs);
+    results(:,:,p) = iterFits;
+    bics(p) = mean(iterBICs);
 end
 
 % Now after iterating over left-out predictors, compare model fits
@@ -128,3 +128,12 @@ end
 %     fprintf(1, 'Best to leave out predictor %i', winner);
 %     % But... how to find the name of that predictor??
 % end
+
+% EXPORT
+% Expand results back from 1-per-parcel to whole-brain
+% Necessary for visualization in BrainVoyager
+for j = 1:numPredictors + 1
+    for i = 1:numRuns        
+        output(i,:,j) = expandROIs(results(i,:,j), testLabels);
+    end
+end

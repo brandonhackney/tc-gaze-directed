@@ -18,5 +18,5 @@ p.beh = fullfile(p.source, 'SES02', 'beh'); % slash sub-id slash file
 p.derivatives = fullfile(p.root, 'BIDS', 'derivatives');
 p.bv = fullfile(p.derivatives, 'bv', 'ses-02'); % BrainVoyager-format data
 p.fs = fullfile(p.derivatives, 'sourcedata', 'freesurfer');
-
+p.atlas = fullfile(p.fs, 'fsaverage', 'label');
 end

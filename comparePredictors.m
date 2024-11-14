@@ -12,6 +12,11 @@ numRuns = 8;
 fullPred = [];
 dataStack = [];
 
+hem1 = {'L', 'R'}; % different functions want different formats
+hem2 = {'lh', 'rh'};
+
+hem = 2; % 
+
 fprintf(1, 'Getting data for %i runs...', numRuns);
 tic;
 for r = 1:numRuns
@@ -30,7 +35,7 @@ for r = 1:numRuns
     fullPred = [fullPred; tmpPred];
     
     % Also load the actual MRI data for all runs
-    dataStack{r} = loadData(subNum, r);
+    dataStack{r} = loadData(subNum, r, hem1{hem});
     % Baseline-correct each run independently
     dataStack{r} = zscore(dataStack{r}, [], 'all');
 %     dataStack{r} = dataStack{r} - mean(dataStack{r}, 1); % subtract mean
@@ -81,11 +86,17 @@ for p = 1:numPredictors + 1
         testPred = [ones(height(testPred), 1), testPred];
         % Regress out the nuisance predictors from training data
         [~, trainResid] = simpleGLM(trainData, trainNuis);
+        
+        % Subset the data to parcels (from whole-brain)
+        [trainResid, trainLabels] = splitByROI(trainResid, hem2{hem});
+        
         % Estimate betas for the predictors of interest
         [betas, ~] = simpleGLM(trainResid, trainPred);
         % Regress out nuisance from test data
         testData = dataStack{r};
         [~, testResid] = simpleGLM(testData, testNuis);
+        % Subset the test data to parcels 
+        [testResid, testLabels] = splitByROI(testResid, hem2{hem});
 %         testResid = averageRunResiduals(residuals, numTRs);
         predictedTS = testPred * betas; % simple
 

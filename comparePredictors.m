@@ -112,22 +112,14 @@ for p = 1:numPredictors + 1
         toc % implicitly includes a newline
     end
     
-    % After iterating over left-out runs, compare the model fits
-    % This... probably depends on the ROI?
-    % Just export for now, I'll have to inspect before analyzing further.
-%     output(p) = [];
+    % After iterating over left-out runs, return the model fits
+    % This varies by ROI, so we'll need to do an analysis later
     results(:,:,p) = iterFits;
     bics(p) = mean(iterBICs);
 end
 
 % Now after iterating over left-out predictors, compare model fits
-% winner = find(max(output));
-% if winner == numPredictors + 1
-%     fprintf(1, 'Full model is best!');
-% else
-%     fprintf(1, 'Best to leave out predictor %i', winner);
-%     % But... how to find the name of that predictor??
-% end
+scoreComparison(results, testLabels, bics);
 
 % EXPORT
 % Expand results back from 1-per-parcel to whole-brain
@@ -137,3 +129,5 @@ for j = 1:numPredictors + 1
         output(i,:,j) = expandROIs(results(i,:,j), testLabels);
     end
 end
+% Write to file
+rsq2smp(output, subNum);

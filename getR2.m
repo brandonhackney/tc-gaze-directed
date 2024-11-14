@@ -25,12 +25,17 @@ assert(all(size(actual) == size(predicted)), 'Inputs are not the same size! Matr
 % But each must be scaled by the number of observations
 n = height(actual);
 SSR = sum((predicted - mean(actual, 1)) .^2, 1) / n;
-SST = sum((actual - mean(actual, 1)).^2, 1) / n;
-R2 = SSR ./ SST;
+% SST = sum((actual - mean(actual, 1)).^2, 1) / n;
+% R2 = SSR ./ SST;
 SSEout = sum(SSR, 'all');
 
 % The alternative is to literally square the r value, i.e. Pearson corr
-% R2 = columncorr(actual, predicted);
+% A "signed-squared" value preserves the original sign.
+% This is the method used by McMahon Bonner & Isik.
+% A strong negative R2 is considered worse than a weak positive R2.
+R = columncorr(actual, predicted);
+s = sign(R);
+R2 = s .* (R.^2);
 
 % OPTIONAL OUTPUT: return the SSE so you can calculate a BIC
 end

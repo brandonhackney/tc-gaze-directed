@@ -1,4 +1,4 @@
-function output = getSDM(subNum, runNum)
+function [output, timing] = getSDM(subNum, runNum)
 % Generate a design matrix for fMRI analysis based on scan and stim data.
 % Given a subject number and run number, assuming a specific task,
 % find files indicating stimulus order, duration, etc.,
@@ -49,7 +49,7 @@ frameCol = 0:SR:durSecs-SR; % use this to look up where to index
 
 % Now generate a predictor matrix:
 % rows are timepoints, cols are predictors
-numPreds = 4; % specify
+numPreds = 4 + 1; % 4 of interest, plus timing as a nuisance variable
 sdm = zeros(numFrames, numPreds);
 for t = 1:numTrials
     stimName = tsv.stim_id{t};
@@ -101,6 +101,7 @@ for t = 1:numTrials
     sdm(subset,2) = interact2; % Binary - no need to rescale
     sdm(subset,3) = deviation2 ./ maxDeviation;
     sdm(subset,4) = rating / maxRating; % convert to percent
+    sdm(subset,5) = 1; % stim on vs stim off
     % ...
 %     sdm = [sdm; dmat];
 end
@@ -121,3 +122,9 @@ for i = 1:width(sdm)
 %     mtvec = (1:1000*SR:length(col) * 1000*SR) - 1;
     output(:,i) = binData(frameCol', col, TRvec'); % average the framewise values within each TR
 end
+
+% Pull the final column (trial on/off) out and return as a separate var.
+timing = output(:,end);
+output(:,end) = [];
+
+end % function

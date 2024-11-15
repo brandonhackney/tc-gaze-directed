@@ -21,14 +21,14 @@ fprintf(1, 'Getting data for %i runs...', numRuns);
 tic;
 for r = 1:numRuns
     % Get the design matrix for each run
-    tmpPred = getSDM(subNum, r);
+    [tmpPred, timing] = getSDM(subNum, r);
     numPredictors = width(tmpPred);
     % Also need to account for nuisance regressors, like head motion
     % Except the full files are not the same width between runs!!
     % So only grab a select few predictors
     % And keep these separate, since we will predict in steps
     nuisance = loadNuisance(subNum, r);
-    tmpPred = [tmpPred, nuisance];
+    tmpPred = [tmpPred, nuisance, timing];
     
     % Insert run num as a trailing column
     tmpPred(:, end+1) = r;

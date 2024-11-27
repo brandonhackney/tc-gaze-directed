@@ -12,7 +12,8 @@ function [output, timing] = getSDM(subNum, runNum)
 
 % example fname:
 % fname = '/data2/2021_PhysicalSocial/source/SES02/beh/sub-01/sub-01_task-tricopa_date-19-Nov-2021_run-8.txt';
-fname = findTxt(subNum, runNum);
+srcID = ind2src(subNum); % use the appropriate subjectID for source
+fname = findTxt(srcID, runNum);
 dat = readtable(fname, 'Delimiter', '\t');
 % The .txt file contains run number, trial number, stim name, 
 % and stimulus onset time in both seconds and TRs.
@@ -29,7 +30,8 @@ tsv.stim_id = stimNames; % entire column
 % Now you have the onset, duration, and name of each stimulus.
 
 % Get our different predictor tables
-motionTable = importdata('motionData.mat');
+motionTable = importdata('motionDataSum.mat'); % total, not avg
+% motionTable = importdata('motionData.mat');
 interactTable = importdata('interactData.mat');
 ratingTable = importdata('rateData.mat');
 interactTable2 = importdata('interactVectors.mat');
@@ -75,7 +77,7 @@ for t = 1:numTrials
 
     % Get the stuff you need for this stim
     motion2 = motionTable.MotionEnergy{strcmp(motionTable.StimName, stimName)}; % vector
-    motion = mean(motion2, 2); % I think?? scalar
+    motion = mean(motion2, 1); % scalar
     interact = interactTable.Interactivity(strcmp(interactTable.StimName, stimName)); % scalar
     interact2 = interactTable2.Interactivity{strcmp(interactTable2.StimName, stimName)}; % vector
     rating = ratingTable.Rating(strcmp(ratingTable.StimName, stimName)); % scalar
@@ -87,9 +89,9 @@ for t = 1:numTrials
     maxMotion = getMaxMotion(motionTable);
 
     % Now start inserting predictors from left to right
-    if length(subset) ~= length(motion)
+    if length(subset) ~= length(motion2)
         % Force things to be the same length, in lieu of a better solution
-        subset = onsetInd:(onsetInd + length(motion) - 1);
+        subset = onsetInd:(onsetInd + length(motion2) - 1);
     end
 %     sdm(subset,1) = 1; % constant
 %     sdm(subset,2) = t; % trial
@@ -97,6 +99,7 @@ for t = 1:numTrials
 %     sdm(subset,4) = interact;
 %     sdm(subset,5) = rating / maxRating; % convert to percent
 
+%     sdm(subset, 1) = motion; % avg motion across whole video
     sdm(subset,1) = motion2 ./ maxMotion;
     sdm(subset,2) = interact2; % Binary - no need to rescale
     sdm(subset,3) = deviation2 ./ maxDeviation;
@@ -120,11 +123,11 @@ for i = 1:width(sdm)
     col = conv(col, hrf, 'same');
     % Vectors need to be summed/averaged over the longer time period
 %     mtvec = (1:1000*SR:length(col) * 1000*SR) - 1;
-    output(:,i) = binData(frameCol', col, TRvec'); % average the framewise values within each TR
+%     output(:,i) = binData(frameCol', col, TRvec'); % average the framewise values within each TR
+    output(:,i) = interp1(frameCol, col, TRvec);
 end
 
 % Pull the final column (trial on/off) out and return as a separate var.
 timing = output(:,end);
 output(:,end) = [];
-
 end % function

@@ -7,11 +7,6 @@ function [output, bics] = comparePredictors(varargin)
 % 6. Cross-validate by leaving out each run independently
 % 7. Compare the effect of leaving each predictor out
 
-% First, concatenate all runs for this subject into one big "fullPred"
-numRuns = 8;
-fullPred = [];
-dataStack = [];
-
 hem1 = {'L', 'R'}; % different functions want different formats
 hem2 = {'lh', 'rh'};
 
@@ -19,8 +14,10 @@ hem = 2; %
 if nargin > 0
     % Allow a list of subjects to iterate over (even just one)
     subList = varargin{1};
-    numSubs = lenth(subList);
-else
+    numSubs = length(subList);
+end
+if numSubs == 0
+    % if no input OR if empty input
     numSubs = 30;
     subList = 1:numSubs;
 end
@@ -31,10 +28,12 @@ end
 % results = zeros([numSubs, 1, 1]); 
 
 for subNum = subList
+    % First, concatenate all runs for this subject into one big "fullPred"
     % Reset a few things per subject
     fullPred = [];    
     dataStack = [];
     subResults = [];
+    numRuns = 8; % how to get this as a variable?
     % Now go:
     fprintf(1, 'Subject %i: ', subNum);
     fprintf(1, 'Getting data for %i runs...', numRuns);

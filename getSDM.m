@@ -1,4 +1,4 @@
-function [output, timing] = getSDM(subNum, runNum)
+function [output, predList, timing] = getSDM(subNum, runNum)
 % Generate a design matrix for fMRI analysis based on scan and stim data.
 % Given a subject number and run number, assuming a specific task,
 % find files indicating stimulus order, duration, etc.,
@@ -10,6 +10,13 @@ function [output, timing] = getSDM(subNum, runNum)
 % ONLY the .txt files registered the stimulus name.
 % So we need to combine information from two files to get what we need.
 
+
+% % WHAT ARE YOU ANALYZING?? % %
+predList = {'MotionFrame', 'Interact', 'TopDown'};
+numPreds = length(predList);
+% % WHAT ARE YOU ANALYZING?? % %
+
+% Load data
 % example fname:
 % fname = '/data2/2021_PhysicalSocial/source/SES02/beh/sub-01/sub-01_task-tricopa_date-19-Nov-2021_run-8.txt';
 srcID = ind2src(subNum); % use the appropriate subjectID for source
@@ -51,7 +58,7 @@ frameCol = 0:SR:durSecs-SR; % use this to look up where to index
 
 % Now generate a predictor matrix:
 % rows are timepoints, cols are predictors
-numPreds = 4 + 1; % 4 of interest, plus timing as a nuisance variable
+
 sdm = zeros(numFrames, numPreds);
 for t = 1:numTrials
     stimName = tsv.stim_id{t};
@@ -73,42 +80,24 @@ for t = 1:numTrials
     TR = dat.Time(2) / dat.TR(2); % units of TRs (expect 1.5 sec)
     timeVec = onset:TR:endtime;
     TRvec = timeVec / TR; % should basically be 1 2 3 etc
-    col = ones([length(timeVec),1]); % a prototype
+    col = ones([length(timeVec),1]); % a prototype  
 
     % Get the stuff you need for this stim
     motion2 = motionTable.MotionEnergy{strcmp(motionTable.StimName, stimName)}; % vector
-    motion = mean(motion2, 1); % scalar
-    interact = interactTable.Interactivity(strcmp(interactTable.StimName, stimName)); % scalar
-    interact2 = interactTable2.Interactivity{strcmp(interactTable2.StimName, stimName)}; % vector
-    rating = ratingTable.Rating(strcmp(ratingTable.StimName, stimName)); % scalar
-    deviation2 = deviatTable.Deviance{strcmp(deviatTable.StimName, stimName)}; % vector
-    
-    % Associated parameters
-    maxRating = 5;
-    maxDeviation = 1920 * 1200;
-    maxMotion = getMaxMotion(motionTable);
 
     % Now start inserting predictors from left to right
     if length(subset) ~= length(motion2)
         % Force things to be the same length, in lieu of a better solution
         subset = onsetInd:(onsetInd + length(motion2) - 1);
     end
-%     sdm(subset,1) = 1; % constant
-%     sdm(subset,2) = t; % trial
-%     sdm(subset,3) = motion;
-%     sdm(subset,4) = interact;
-%     sdm(subset,5) = rating / maxRating; % convert to percent
-
-%     sdm(subset, 1) = motion; % avg motion across whole video
-    sdm(subset,1) = motion2 ./ maxMotion;
-    sdm(subset,2) = interact2; % Binary - no need to rescale
-    sdm(subset,3) = deviation2 ./ maxDeviation;
-    sdm(subset,4) = rating / maxRating; % convert to percent
-    sdm(subset,5) = 1; % stim on vs stim off
-    % ...
-%     sdm = [sdm; dmat];
+    dataList = buildDataList(predList, length(subset));
+    % Insert predictors programmatically
+    for s = 1:numPreds
+        pname = predList{s};
+        x = strcmp({dataList.Name}, pname);
+        sdm(subset,s) = dataList(x).Data;
+    end
 end
-% sdm(:,1) = 1; % constant
 
 % Now you have a boxcar at 60Hz that needs to be:
 % - Convolved with an HRF to produce an expected brain response
@@ -127,7 +116,49 @@ for i = 1:width(sdm)
     output(:,i) = interp1(frameCol, col, TRvec);
 end
 
-% Pull the final column (trial on/off) out and return as a separate var.
-timing = output(:,end);
-output(:,end) = [];
-end % function
+if nargout > 2 && any(contains(predList, 'Timing'))
+    % Return the timing column (trial on/off) as a separate variable.
+    tind = strcmp(predList, 'Timing');
+    timing = output(:,tind);
+    output(:,tind) = [];
+elseif nargout > 2 && ~any(contains(predList, 'Timing'))
+    timing = []; % give it an empty to avoid crashing
+end
+
+% SUBFUNCTIONS
+function dataList = buildDataList(predNames, duration)
+for p = 1:length(predNames)
+    name = predNames{p};
+    switch name
+        case 'Ramp'
+            data = (1:duration) / duration;
+        case 'Timing'
+            data = 1;
+        case 'MotionFrame'
+            motion2 = motionTable.MotionEnergy{strcmp(motionTable.StimName, stimName)}; % vector
+            maxMotion = getMaxMotion(motionTable);
+            data = motion2 ./ maxMotion;
+        case 'MotionAvg'
+            data = buildDataList({'MotionFrame'}, duration);
+            data = mean(data, 1);
+        case 'Interact'
+            data = interactTable2.Interactivity{strcmp(interactTable2.StimName, stimName)}; % vector
+        case 'InteractAvg'
+            data = interactTable.Interactivity(strcmp(interactTable.StimName, stimName)); % scalar
+        case 'Rating'
+            data = ratingTable.Rating(strcmp(ratingTable.StimName, stimName)); % scalar
+            maxRating = 5;
+            data = data ./ maxRating;
+        case 'TopDown'
+            data = deviatTable.Deviance{strcmp(deviatTable.StimName, stimName)}; % vector
+%             maxDeviation = 1920 * 1200;
+            data = double(data >= 83.81); % 2 deg visual angle from exp.
+%             data = data ./ maxDeviation;
+    end
+    % Write to export
+    dataList(p).Name = name;
+    dataList(p).Data = data;
+end % for predictor
+end % subfunction
+end % main function
+

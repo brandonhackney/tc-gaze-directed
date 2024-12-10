@@ -151,9 +151,16 @@ for p = 1:length(predNames)
             data = data ./ maxRating;
         case 'TopDown'
             data = deviatTable.Deviance{strcmp(deviatTable.StimName, stimName)}; % vector
-%             maxDeviation = 1920 * 1200;
+            data = interp1(linspace(1,duration,length(data)), data, 1:duration);
+            maxDeviation = sqrt(1920^2 + 1200^2);
+            data = data ./ maxDeviation;
+        case 'TopDownBinary'
+            % Instead of the actual deviation values,
+            % consider a binary "was this frame deviated?",
+            % which could be further reduced to percent time deviated
+            data = buildDataList({'TopDown'}, duration);
             data = double(data >= 83.81); % 2 deg visual angle from exp.
-%             data = data ./ maxDeviation;
+            data(data > 1) = 1; % saturation
     end
     % Write to export
     dataList(p).Name = name;

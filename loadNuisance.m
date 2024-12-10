@@ -7,8 +7,8 @@ nuis = readtable(fname, 'FileType', 'Text', 'Delimiter', '\t');
 % There are a variable number of columns (e.g. multiple derivatives)
 % And I really just care about a handful, so subset here.
 % There are others like csf_wm, rot_z etc that MAY be useful? but idk
-output = [nuis.global_signal, nuis.csf, nuis.white_matter];
-% output = [nuis.csf, nuis.white_matter];
+% output = [nuis.global_signal, nuis.csf, nuis.white_matter];
+output = [nuis.csf, nuis.white_matter];
 % Also include the motion parameters and their derivatives:
 output = [output, nuis.rot_x, nuis.rot_y, nuis.rot_z, ...
     nuis.rot_x_derivative1, nuis.rot_y_derivative1, nuis.rot_z_derivative1, ...

@@ -99,6 +99,14 @@ for t = 1:numTrials
     end
 end
 
+% Experimental: address collinearity of parametric predictors
+% Stimulus timing is highly correlated with all other predictors,
+% especially when you just modulate its amplitude for different trials.
+% so mean-center (NOT z-score!) anything that isn't timing.
+x = ~strcmp(predList, 'Timing') & ~strcmp(predList, 'Ramp');
+sdm(:,x) = sdm(:,x) - mean(sdm(:,x));
+sdm(:,x) = sdm(:,x) ./ max(sdm(:,x));
+
 % Now you have a boxcar at 60Hz that needs to be:
 % - Convolved with an HRF to produce an expected brain response
 % - Downsampled to the 1.5-sec TR of the MRI data.

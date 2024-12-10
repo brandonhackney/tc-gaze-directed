@@ -1,4 +1,4 @@
-function [output, bics] = comparePredictors(varargin)
+function [output, predList] = comparePredictors(varargin)
 % 1. Aggregate MRI data for all runs of a specific task 
 % 2. Regress out effects of nuisance parameters (like CSF signal)
 % 3. Estimate effect of parameters of interest on the residuals
@@ -11,6 +11,7 @@ hem1 = {'L', 'R'}; % different functions want different formats
 hem2 = {'lh', 'rh'};
 
 hem = 2; % 
+numSubs = 0;
 if nargin > 0
     % Allow a list of subjects to iterate over (even just one)
     subList = varargin{1};
@@ -39,8 +40,9 @@ for subNum = subList
     fprintf(1, 'Getting data for %i runs...', numRuns);
     tic;
     for r = 1:numRuns
+      % % PREDICTORS:
         % Get the design matrix for each run
-        [tmpPred, predList, timing] = getSDM(subNum, r);
+        [tmpPred, predList] = getSDM(subNum, r);
 %         numPredictors = width(tmpPred) + 1;
         numPredictors = length(predList);
         % Also need to account for nuisance regressors, like head motion
@@ -49,25 +51,56 @@ for subNum = subList
         % And keep these separate, since we will predict in steps
         nuisance = loadNuisance(subNum, r);
 %         tmpPred = [tmpPred, nuisance, timing];
-        tmpPred = [tmpPred, timing, nuisance];
+%         tmpPred = [tmpPred, timing, nuisance];
+        
+        % z-score your predictors
+        tmpPred = zscore(tmpPred);
+        nuisance = zscore(nuisance);
+        
+        % Insert an intercept column for both
+        tmpPred = [ones(height(tmpPred), 1), tmpPred];
+        nuisance = [ones(height(nuisance), 1), nuisance];
+        
 
-        % Insert run num as a trailing column
+        % Insert run num as a trailing column, for later subsetting
         tmpPred(:, end+1) = r;
         fullPred = [fullPred; tmpPred];
 
-        % Also load the actual MRI data for all runs
+        
+      % % DATA:
+        % Load the actual MRI data for all runs
         dataStack{r} = loadData(subNum, r, hem1{hem});
-        % Baseline-correct each run independently
-    %     dataStack{r} = zscore(dataStack{r}, [], 'all');
-    %     dataStack{r} = dataStack{r} - mean(dataStack{r}, 1); % subtract mean
-    %     dataStack{r} = dataStack{r} ./ max(dataStack{r}, [], 1); % scale to 1
+        
+%%%%%%%%% TEST
+        % Replace the real data with random data
+%         dataStack{r} = rand(size(dataStack{r})) .* mean(dataStack{r}, 'all');
+%%%%%%%%% TEST
+        
+
+        % PREPROCESS DATA:
+        % Immediately z-score the data, to remove any run-specific effect
+        dataStack{r} = zscore(dataStack{r});
+        % Regress the nuisance out of the data, like head motion
+        [~, dataStack{r}] = simpleGLM(dataStack{r}, nuisance);
+        % Then avg within ROIs to further reduce computational load
+        [dataStack{r}, roiLabels] = splitByROI(dataStack{r}, hem2{hem});
+        
+        % z-score those residuals independently within each vertex?
+%         dataStack{r} = zscore(dataStack{r});
+        % OR z-score those residuals relative to whole-brain variance??
+%         dataStack{r} = zscore(dataStack{r}, [], 'all');
+
     end
     clear tmpPred
     numVoxels = width(dataStack{1}); % assuming all are same size
     numTRs = height(dataStack{1});
     fprintf(1, 'Done.\n');
     toc
-
+    
+    % Analyze predictor collinearity
+    disp([{'Intercept'},predList,{'Run number'}]);
+    disp(corr(fullPred));
+    
     fprintf(1, '\nCross-validating %i predictors:\n', numPredictors)
     % Now do some leave-one-out analyses
     for p = 1:numPredictors + 1
@@ -77,12 +110,16 @@ for subNum = subList
             pred = fullPred;
             fprintf(1, 'Full model:\n');
             numRunPred = numPredictors;
+            usedPreds = predList;
         else
             % Ignore one of the predictors,
             % to estimate its unique contribution
-            pred = fullPred(:,1:width(fullPred) ~= p);
+            % Use p+1 to account for the intercept column in col 1
+            spec = 1:width(fullPred) ~= p+1;
+            pred = fullPred(:,spec);
             fprintf(1, 'Predictor %i of %i:\n', p, numPredictors);
             numRunPred = numPredictors - 1;
+            usedPreds = predList(spec(2:end-1)); % skip intercept & run
         end
         % Iterate through different combinations of data
         iterFits = zeros(numRuns, 1); % but will expand...
@@ -96,53 +133,28 @@ for subNum = subList
             testData = dataStack{r};
             trainPred = pred(pred(:,end) ~= r, :);
             testPred = pred(pred(:,end) == r, :);
-            % Convert run indicators (1 2 3 etc) to an intercept (0/1) per run
-            % But since we z-scored the data by run earlier,
-            % we don't need to keep these in trainPred:
-            % we instead use them to separate nuisance regressors by run
-            [trainPred, trainNuis] = splitRunRegressors(trainPred, numRunPred); % conv to many binary cols
-    %         testPred(:,end) = []; % drop the run column for the single run
-            [testPred, testNuis] = splitRunRegressors(testPred, numRunPred);
-            % z-score the nuisance matrix, but not the brain data yet
-            trainNuis = zscore(trainNuis);
-            testNuis = zscore(testNuis);
-
-            % Also insert an overall intercept column
-            trainPred = [ones(height(trainPred), 1), trainPred];
-            testPred = [ones(height(testPred), 1), testPred];
-            trainNuis = [ones(height(trainNuis), 1), trainNuis];
-            testNuis = [ones(height(testNuis), 1), testNuis];
             
-            % TRY SUBSETTING RIGHT HERE
-            [trainData, trainLabels] = splitByROI(trainData, hem2{hem});
-            [testData, testLabels] = splitByROI(testData, hem2{hem});
+            % Drop the run indicator from the predictors.
+            % We've already z-scored the data per run,
+            % so additional controls are unnecessary.
+            testPred(:,end) = [];
+            trainPred(:,end) = [];
 
-            % Regress out the nuisance predictors from training data
-            [~, trainResid] = simpleGLM(trainData, trainNuis);
-            trainResid = zscore(trainResid);
             % Estimate betas for the predictors of interest
-            [betas, ~] = simpleGLM(trainResid, trainPred);
-            
-            % Regress out nuisance from test data
-            [~, testResid] = simpleGLM(testData, testNuis);
-            testResid = zscore(testResid);
-    %         testResid = averageRunResiduals(residuals, numTRs);
+            [betas, ~] = simpleGLM(trainData, trainPred);
+
             % Calculate expected whole-brain signal based on training model
             predictedTS = testPred * betas; % simple
             
-            % Downsample from whole-brain to parcel-average
-%             [trainResid, trainLabels] = splitByROI(trainResid, hem2{hem}); % not necessary at this point??
-%             [testResid, testLabels] = splitByROI(testResid, hem2{hem});
-%             predictedTS = splitByROI(predictedTS, hem2{hem});
             
             % Get a signed-squared correlation b/w prediction and test data
             % Following McMahon et al 2023
             % This allows for a negative R2, 
             % when the model fits worse than a horizontal line
-            [x, SSE] = getR2(testResid, predictedTS);
+            [x, SSE] = getR2(testData, predictedTS);
             iterFits(r,1:length(x)) = x; % this helps the variable expand
             % Export to some variable
-            iterBICs = BIC(height(testResid), width(testPred), SSE);
+            iterBICs = BIC(height(testData), width(testPred), SSE);
             fprintf(1, 'Done. ');
             toc % implicitly includes a newline
         end
@@ -158,18 +170,20 @@ for subNum = subList
 end % subject
 
 % Now after iterating over left-out predictors, compare model fits
-scoreComparison(results, testLabels, predList);
+scoreComparison(results, roiLabels, predList);
 
 % Generate some QC plots
+fullPred = fullPred(:, 2:end); % drop intercept column
 plotPredCorr(fullPred, subNum, predList);
 
 % EXPORT
 % Expand results back from 1-per-parcel to whole-brain
 % Necessary for visualization in BrainVoyager
-for j = 1:numPredictors + 1
-    for i = 1:numRuns        
-        output(i,:,j) = expandROIs(results(i,:,j), testLabels);
-    end
-end
-% Write to file
-rsq2smp(output, subNum);
+% for j = 1:numPredictors + 1
+%     for i = 1:numRuns        
+%         output(i,:,j) = expandROIs(results(i,:,j), testLabels);
+%     end
+% end
+% % Write to file
+% rsq2smp(output, subNum);
+output = results;

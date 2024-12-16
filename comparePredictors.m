@@ -28,6 +28,7 @@ end
 % size is numSubs * numROIs * numPredictors
 % results = zeros([numSubs, 1, 1]); 
 
+predCorr = [];
 for subNum = subList
     % First, concatenate all runs for this subject into one big "fullPred"
     % Reset a few things per subject
@@ -98,8 +99,9 @@ for subNum = subList
     toc
     
     % Analyze predictor collinearity
-    disp([{'Intercept'},predList,{'Run number'}]);
-    disp(corr(fullPred));
+    predCorr(:,:,subNum) = corr(fullPred(:, 2:end-1), 'rows', 'complete');
+    disp(predList);
+    disp(predCorr(:,:,subNum));
     
     fprintf(1, '\nCross-validating %i predictors:\n', numPredictors)
     % Now do some leave-one-out analyses
@@ -173,8 +175,8 @@ end % subject
 scoreComparison(results, roiLabels, predList);
 
 % Generate some QC plots
-fullPred = fullPred(:, 2:end); % drop intercept column
-plotPredCorr(fullPred, subNum, predList);
+avgPredCorr = mean(predCorr, 3);
+plotPredCorr(avgPredCorr, predList);
 
 % EXPORT
 % Expand results back from 1-per-parcel to whole-brain

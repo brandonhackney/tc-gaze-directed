@@ -173,6 +173,7 @@ end % subject
 
 % Now after iterating over left-out predictors, compare model fits
 scoreComparison(results, roiLabels, predList);
+boxplotROIs(results,roiLabels,predList);
 
 % Generate some QC plots
 avgPredCorr = mean(predCorr, 3);

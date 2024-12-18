@@ -31,72 +31,9 @@ end
 predCorr = [];
 for subNum = subList
     % First, concatenate all runs for this subject into one big "fullPred"
-    % Reset a few things per subject
-    fullPred = [];    
-    dataStack = [];
-    subResults = [];
-    numRuns = 8; % how to get this as a variable?
-    % Now go:
-    fprintf(1, 'Subject %i: ', subNum);
-    fprintf(1, 'Getting data for %i runs...', numRuns);
-    tic;
-    for r = 1:numRuns
-      % % PREDICTORS:
-        % Get the design matrix for each run
-        [tmpPred, predList] = getSDM(subNum, r);
-%         numPredictors = width(tmpPred) + 1;
-        numPredictors = length(predList);
-        % Also need to account for nuisance regressors, like head motion
-        % Except the full files are not the same width between runs!!
-        % So only grab a select few predictors
-        % And keep these separate, since we will predict in steps
-        nuisance = loadNuisance(subNum, r);
-%         tmpPred = [tmpPred, nuisance, timing];
-%         tmpPred = [tmpPred, timing, nuisance];
-        
-        % z-score your predictors
-        tmpPred = zscore(tmpPred);
-        nuisance = zscore(nuisance);
-        
-        % Insert an intercept column for both
-        tmpPred = [ones(height(tmpPred), 1), tmpPred];
-        nuisance = [ones(height(nuisance), 1), nuisance];
-        
-
-        % Insert run num as a trailing column, for later subsetting
-        tmpPred(:, end+1) = r;
-        fullPred = [fullPred; tmpPred];
-
-        
-      % % DATA:
-        % Load the actual MRI data for all runs
-        dataStack{r} = loadData(subNum, r, hem1{hem});
-        
-%%%%%%%%% TEST
-        % Replace the real data with random data
-%         dataStack{r} = rand(size(dataStack{r})) .* mean(dataStack{r}, 'all');
-%%%%%%%%% TEST
-        
-
-        % PREPROCESS DATA:
-        % Immediately z-score the data, to remove any run-specific effect
-        dataStack{r} = zscore(dataStack{r});
-        % Regress the nuisance out of the data, like head motion
-        [~, dataStack{r}] = simpleGLM(dataStack{r}, nuisance);
-        % Then avg within ROIs to further reduce computational load
-        [dataStack{r}, roiLabels] = splitByROI(dataStack{r}, hem2{hem});
-        
-        % z-score those residuals independently within each vertex?
-%         dataStack{r} = zscore(dataStack{r});
-        % OR z-score those residuals relative to whole-brain variance??
-%         dataStack{r} = zscore(dataStack{r}, [], 'all');
-
-    end
-    clear tmpPred
-    numVoxels = width(dataStack{1}); % assuming all are same size
-    numTRs = height(dataStack{1});
-    fprintf(1, 'Done.\n');
-    toc
+    [dataStack, roiLabels, fullPred, predList] = getDataStack(subNum, hem);
+    numPredictors = length(predList);
+    numRuns = height(dataStack);
     
     % Analyze predictor collinearity
     predCorr(:,:,subNum) = corr(fullPred(:, 2:end-1), 'rows', 'complete');
@@ -148,13 +85,10 @@ for subNum = subList
             % Calculate expected whole-brain signal based on training model
             predictedTS = testPred * betas; % simple
             
+            % Measure model fit b/w prediction and test data
+            [R2, SSE] = getR2(testData, predictedTS);
             
-            % Get a signed-squared correlation b/w prediction and test data
-            % Following McMahon et al 2023
-            % This allows for a negative R2, 
-            % when the model fits worse than a horizontal line
-            [x, SSE] = getR2(testData, predictedTS);
-            iterFits(r,1:length(x)) = x; % this helps the variable expand
+            iterFits(r,1:length(R2)) = R2; % this helps the variable expand
             % Export to some variable
             iterBICs = BIC(height(testData), width(testPred), SSE);
             fprintf(1, 'Done. ');

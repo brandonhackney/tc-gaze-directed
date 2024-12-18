@@ -28,12 +28,12 @@ for i = 1:numROIs
 %             fprintf('\t%s: %0.4f', 'FullModel', 1); % meaningless if x-y/x
         else
             predName = predictorList{p};
-            fullmodel = modelAvgs(:,i,end);
-            limmodel = modelAvgs(:,i,p);
-            result = (fullmodel - limmodel) / fullmodel;
-            results(p) = result;
-%             fprintf('\t%s: %0.4f', predName, fullmodel - limmodel);
-            fprintf('\t%s: %0.4f', predName, result);
+            % Do the variance partitioning within subject, then average
+            fullmodel = modelFits(:,i,end);
+            limmodel = modelFits(:,i,p);
+            result = (fullmodel - limmodel) ./ fullmodel;
+            results(p) = mean(result, 1);
+            fprintf('\t%s: %0.4f', predName, results(p));
         end
     end
     fprintf(1, '\n');
@@ -51,10 +51,10 @@ end
 fprintf(1, '\n\nMean Max = %0.4f\tMax Mean = %0.4f\n', mean(roimaxes, 'omitnan'), max(roimeans));
 fprintf(1, 'Max Max = %0.4f\tMean Mean = %0.4f\n', max(roimaxes), mean(roimeans, 'omitnan'));
 
-% Most consistent ROIs (i.e. peak average across all subjects)
+% Best-explained ROIs (i.e. peak average across all subjects)
 [v, i] = maxk(roimeans, 3);
 n = {labelStruct(i).Label};
-fprintf(1, '\nThe three most consistent ROIs are:\n');
+fprintf(1, '\nThe three most consistently well-explained ROIs are:\n');
 fprintf(1, '\t%s (mean R\x00B2 = %0.4f),\n', n{1}, v(1));
 fprintf(1, '\t%s (mean R\x00B2 = %0.4f), and \n', n{2}, v(2));
 fprintf(1, '\t%s (mean R\x00B2 = %0.4f).\n', n{3}, v(3));
@@ -76,10 +76,15 @@ for p = 1:numPreds+1
         [r2f, roi] = max((modelAvgs(:,:,end)), [], 'omitnan');
     else
         predName = predictorList{p};
-        [r2, roi] = max((modelAvgs(:,:,end) - modelAvgs(:,:,p)) ./ modelAvgs(:,:,end), [], 'omitnan');
+        fullmodel = modelFits(:,:,end);
+        limmodel = modelFits(:,:,p);
+        result = (fullmodel - limmodel) ./ fullmodel;
+        result = mean(result, 1, 'omitnan'); % collapse subjects
+        
+        [r2, roi] = max(result, [], 'omitnan');
 %         [r2, roi] = max(modelAvgs(:,:,end) - modelAvgs(:,:,p), [], 'omitnan');
         r2f = modelAvgs(:,roi,end);
     end
     roiName = labelStruct(roi).Label;
-    fprintf(1,'\t%s: %s (R\x00B2 = %0.4f of %0.4f)\n', predName, roiName, r2, r2f);
+    fprintf(1,'\t%s: %s (%0.2f%% of R\x00B2 = %0.4f)\n', predName, roiName, r2 * 100, r2f);
 end

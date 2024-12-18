@@ -12,7 +12,8 @@ function [output, predList, timing] = getSDM(subNum, runNum)
 
 
 % % WHAT ARE YOU ANALYZING?? % %
-predList = {'MotionFrame', 'Interact', 'TopDown'};
+predList = {'MotionFrame', 'Interact', 'TopDown', 'Ramp'};
+% predList = {'Onset', 'TopDown', 'Interact'};
 numPreds = length(predList);
 % % WHAT ARE YOU ANALYZING?? % %
 
@@ -99,13 +100,17 @@ for t = 1:numTrials
     end
 end
 
+if any(strcmp(predList, 'Trial'))
+    % Convert one column of trial numbers to many binary column indicators
+end
+
 % Experimental: address collinearity of parametric predictors
 % Stimulus timing is highly correlated with all other predictors,
 % especially when you just modulate its amplitude for different trials.
 % so mean-center (NOT z-score!) anything that isn't timing.
-x = ~strcmp(predList, 'Timing') & ~strcmp(predList, 'Ramp');
-sdm(:,x) = sdm(:,x) - mean(sdm(:,x));
-sdm(:,x) = sdm(:,x) ./ max(sdm(:,x));
+% x = ~strcmp(predList, 'Timing') & ~strcmp(predList, 'Ramp');
+% sdm(:,x) = sdm(:,x) - mean(sdm(:,x));
+% sdm(:,x) = sdm(:,x) ./ max(sdm(:,x));
 
 % Now you have a boxcar at 60Hz that needs to be:
 % - Convolved with an HRF to produce an expected brain response
@@ -117,7 +122,8 @@ hrf = spm_hrf(SR);
 TRvec = 0:TR:(numTRs-1) * TR; % 
 for i = 1:width(sdm)
     col = sdm(:,i);
-    col = conv(col, hrf, 'same');
+    col = conv(col, hrf, 'full');
+    col = col(1:height(sdm)); % chop off the trailing portion
     % Vectors need to be summed/averaged over the longer time period
 %     mtvec = (1:1000*SR:length(col) * 1000*SR) - 1;
 %     output(:,i) = binData(frameCol', col, TRvec'); % average the framewise values within each TR
@@ -169,6 +175,14 @@ for p = 1:length(predNames)
             data = buildDataList({'TopDown'}, duration);
             data = double(data >= 83.81); % 2 deg visual angle from exp.
             data(data > 1) = 1; % saturation
+        case 'Trial'
+            data = t;
+        case 'Onset'
+            data = zeros(duration, 1);
+            data(1) = 1;
+        case 'Offset'
+            data = zeros(duration, 1);
+            data(end) = 1;
     end
     % Write to export
     dataList(p).Name = name;

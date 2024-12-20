@@ -10,3 +10,6 @@
 
 ## Project-specific exclusions
 # e.g. Subject data
+*.gii
+*.nii
+hidden

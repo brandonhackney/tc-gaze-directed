@@ -1,7 +1,7 @@
 function [dataStack,  roiLabels, fullPred, predList] = getDataStack(subNum, hem)
 % Extract data for this subject, subset to ROIs, and get design matrix
 
-numRuns = 8;
+numRuns = countRuns(subNum, 'tricopa');
 fullPred = [];    
 dataStack = cell(numRuns, 1);
 

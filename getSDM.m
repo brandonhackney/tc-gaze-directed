@@ -12,8 +12,8 @@ function [output, predList] = getSDM(subNum, runNum, predList)
 
 if nargin < 3
     % % WHAT ARE YOU ANALYZING?? % %
-    predList = {'MotionFrame', 'Interact', 'TopDown', 'Ramp'};
-    % predList = {'Onset', 'TopDown', 'Interact'};
+    predList = {'MotionFrame', 'Interact', 'TopDown', 'Rating'};
+%     predList = {'MotionFrame', 'Fixation', 'Interact'};
     % % WHAT ARE YOU ANALYZING?? % %
 end
 numPreds = length(predList);
@@ -91,6 +91,8 @@ for p = 1:length(predNames)
             data = (1:duration) / duration;
         case 'Timing'
             data = ones(duration, 1);
+        case 'Fixation'
+            data = params.fixationTable.ScaledFixation(strcmp(params.fixationTable.StimName, stimName)); % scalar
         case 'MotionFrame'
             motion2 = params.motionTable.MotionEnergy{strcmp(params.motionTable.StimName, stimName)}; % vector
             maxMotion = getMaxMotion(params.motionTable);

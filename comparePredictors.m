@@ -1,4 +1,4 @@
-function [output, predList] = comparePredictors(varargin)
+function [output, roiLabels, predList] = comparePredictors(varargin)
 % 1. Aggregate MRI data for all runs of a specific task 
 % 2. Regress out effects of nuisance parameters (like CSF signal)
 % 3. Estimate effect of parameters of interest on the residuals
@@ -80,7 +80,7 @@ for subNum = subList
             trainPred(:,end) = [];
 
             % Estimate betas for the predictors of interest
-            [betas, ~] = simpleGLM(trainData, trainPred);
+            [betas, ~] = simpleGLM(trainData, trainPred, 1);
 
             % Calculate expected whole-brain signal based on training model
             predictedTS = testPred * betas; % simple

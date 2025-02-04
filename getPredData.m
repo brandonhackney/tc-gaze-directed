@@ -19,6 +19,9 @@ function output = getPredData(predList)
     if any(contains(predList, 'TopDown'))
         output.deviatTable = importdata('devData.mat');
     end
+    if any(contains(predList, 'Fixation'))
+        output.fixationTable = importdata('fixationData.mat');
+    end
     % ...add any new metrics here
     
 end % function

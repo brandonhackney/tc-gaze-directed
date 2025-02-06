@@ -22,8 +22,8 @@ function [R2, SSEout] = getR2(actual, predicted)
 assert(all(size(actual) == size(predicted)), 'Inputs are not the same size! Matrix 1 is %s while matrix 2 is %s', num2str(size(actual)), num2str(size(predicted))); 
 
 SSE = sum((actual - predicted) .^2, 1);
-SST = sum((actual - mean(actual, 1)).^2, 1);
-R2 = 1 - (SSE ./ SST);
+% SST = sum((actual - mean(actual, 1)).^2, 1);
+% R2 = 1 - (SSE ./ SST);
 
 
 % A second definition is based on variance explained:
@@ -36,6 +36,9 @@ R2 = 1 - (SSE ./ SST);
 % SST = sum((actual - mean(actual, 1)).^2, 1) / n;
 % R2 = SSR ./ SST;
 
+% SSR = sum((predicted - mean(actual, 1)) .^2, 1);
+% SST = sum((actual - mean(actual, 1)).^2, 1);
+% R2 = SSR ./ SST;
 
 % The third option is to literally square a Pearson correlation.
 % This implicitly prevents negative R2 values.

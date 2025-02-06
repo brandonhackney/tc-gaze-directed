@@ -1,4 +1,4 @@
-function [output, predList, varargout] = getSDM(subNum, runNum, trialStyle)
+function [output, predList] = getSDM(subNum, runNum, predList)
 % Generate a design matrix for fMRI analysis based on scan and stim data.
 % Given a subject number and run number, assuming a specific task,
 % find files indicating stimulus order, duration, etc.,
@@ -10,62 +10,33 @@ function [output, predList, varargout] = getSDM(subNum, runNum, trialStyle)
 % ONLY the .txt files registered the stimulus name.
 % So we need to combine information from two files to get what we need.
 
-
-% % WHAT ARE YOU ANALYZING?? % %
-predList = {'MotionFrame', 'Interact', 'TopDown', 'Ramp'};
-% predList = {'Onset', 'TopDown', 'Interact'};
-numPreds = length(predList);
-% % WHAT ARE YOU ANALYZING?? % %
-
-% Parse input
 if nargin < 3
-    trialStyle = false;
+    % % WHAT ARE YOU ANALYZING?? % %
+    predList = {'MotionFrame', 'Interact', 'TopDown', 'Rating'};
+%     predList = {'MotionFrame', 'Fixation', 'Interact'};
+    % % WHAT ARE YOU ANALYZING?? % %
 end
-% BUT
-if nargout > 2
-    trialStyle = true;
-end
+numPreds = length(predList);
 
-% Load data
-% example fname:
-% fname = '/data2/2021_PhysicalSocial/source/SES02/beh/sub-01/sub-01_task-tricopa_date-19-Nov-2021_run-8.txt';
-srcID = ind2src(subNum); % use the appropriate subjectID for source
-fname = findTxt(srcID, runNum);
-dat = readtable(fname, 'Delimiter', '\t');
-% The .txt file contains run number, trial number, stim name, 
-% and stimulus onset time in both seconds and TRs.
-% Does NOT contain stimulus durations.
-numTrials = size(dat, 1);
-stimNames = dat.StimID;
-
-% The .tsv and .prt files in the same folder DO contain durations
-% So now load one of those up
-tsvfname = regexprep(fname, 'date-(\w+)-(\w+)-(\w+)_run', 'run');
-tsvfname = strrep(tsvfname, '.txt', '_events.tsv');
-tsv = tdfread(tsvfname); % works better than readtable
-tsv.stim_id = stimNames; % entire column
+% Load experiment timing data
+dat = getStimTiming(subNum, runNum);
+numTrials = height(dat);
 % Now you have the onset, duration, and name of each stimulus.
 
 % Get our different predictor tables
 params = getPredData(predList);
 
-% The above are at a different sampling rate than the MRI data,
+% The parameters are at a different sampling rate than the MRI data,
 % so we'll need to do quite a bit of math to align them.
-% First, specify that the videos have a framerate of 60Hz
-SR = 1/60;
-% Get the number and duration of TRs for this run:
-[numTRs, TR] = findRunLength(subNum, runNum);
-durSecs = TR * numTRs;
-numFrames = durSecs / SR;
-frameCol = 0:SR:durSecs-SR; % use this to look up where to index
+% First, get some timing vectors at the different sampling rates
+[frameCol, TRvec] = trialTimeVectors(subNum, runNum);
+numFrames = length(frameCol);
 
 % Now generate a predictor matrix:
 % rows are timepoints, cols are predictors
-
 sdm = zeros(numFrames, numPreds);
-trialCol = zeros(numFrames, 1);
 for t = 1:numTrials
-    stimName = tsv.stim_id{t};
+    stimName = dat.StimName{t};
     if strcmp(stimName(1:2), 'f_')
         % strip out the flip flag and log elsewhere
         % but... what to do with it?
@@ -74,9 +45,9 @@ for t = 1:numTrials
     else
         flipFlag = 0;
     end
-    onset = tsv.onset(t); % sec
-    duration = tsv.duration(t); % sec
-    endtime = onset + duration; % sec
+    onset = dat.Time(t); % sec
+    duration = dat.Duration(t); % sec
+    endtime = dat.Offset(t); % sec
     % Those may not line up perfectly with the frame timing, so estimate.
 %     onsetInd = find(onset <= frameCol, 1);
 %     offsetInd = find(endtime >= frameCol, 1, 'last');
@@ -100,10 +71,6 @@ for t = 1:numTrials
         x = strcmp({dataList.Name}, pname);
         sdm(subset,s) = dataList(x).Data;
     end
-    % Get trial indicator if requested
-    if trialStyle
-        trialCol(subset,1) = t;
-    end
 end
 
 % Now you have a boxcar at 60Hz that needs to be:
@@ -111,19 +78,9 @@ end
 % - Downsampled to the 1.5-sec TR of the MRI data.
 % Convolve with the HRF first to preserve as much data as possible,
 % relative to downsampling first.
-TRvec = 0:TR:(numTRs-1) * TR;
 output = hrfDownsample(sdm, frameCol, TRvec);
 
-if trialStyle
-    % Generate a 3D timing matrix comparing each trial to all others
-    sdm2 = convertTrialCol(trialCol);
-    for i = 1:numTrials
-        sdm3(:,:,i) = hrfDownsample(sdm2(:,:,i), frameCol, TRvec);
-    end
-    varargout{1} = sdm3;
-end
-
-
+end % main function
 
 %% SUBFUNCTIONS
 function dataList = buildDataList(predNames, stimName, duration, params)
@@ -134,6 +91,8 @@ for p = 1:length(predNames)
             data = (1:duration) / duration;
         case 'Timing'
             data = ones(duration, 1);
+        case 'Fixation'
+            data = params.fixationTable.ScaledFixation(strcmp(params.fixationTable.StimName, stimName)); % scalar
         case 'MotionFrame'
             motion2 = params.motionTable.MotionEnergy{strcmp(params.motionTable.StimName, stimName)}; % vector
             maxMotion = getMaxMotion(params.motionTable);
@@ -161,9 +120,6 @@ for p = 1:length(predNames)
             data = buildDataList({'TopDown'}, stimName, duration, params);
             data = double(data >= 83.81); % 2 deg visual angle from exp.
             data(data > 1) = 1; % saturation
-        case 'Trial'
-            data = ones(duration, 1);
-            data = data .* t;
         case 'Onset'
             data = zeros(duration, 1);
             data(1) = 1;
@@ -186,5 +142,4 @@ for p = 1:length(predNames)
     dataList(p).Data = data;
 end % for predictor
 end % subfunction
-end % main function
 

@@ -11,7 +11,7 @@ function [numTRs, TR] = findRunLength(subNum, runNum)
     data = readtable(testName, 'FileType', 'text', 'Delimiter', '\t');
     numTRs = height(data);
     % Also export the TR length
-    fname = fullfile(p.root, 'BIDS', ['task-', taskName, '_bold.json']);
+    fname = fullfile(p.bids, ['task-', taskName, '_bold.json']);
     y = jsondecode(fileread(fname));
     TR = y.RepetitionTime;
 end

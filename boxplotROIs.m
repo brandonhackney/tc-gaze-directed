@@ -5,39 +5,91 @@ function boxplotROIs(results, roiLabels, predList)
 
 % Define a list of ROIs we care about:
 % V1, V4, V4t, V6, MST, FST, MT, 3 STS regions and 3 TPOJ regions
-useLabels = [2, 7, 157, 4, 3, 158, 24, 129, 130, 131, 140, 141, 142];
+% useLabels = [2, 7, 157, 4, 3, 158, 24, 129, 130, 131, 140, 141, 142];
+% useLabels = 1:length(roiLabels);
+useLabels = max(results(:,:,end),[],1) > .2;
+numUsed = sum(useLabels);
 
 numModels = size(results, 3);
 numPreds = length(predList);
-if numPreds == numModels
+if numPreds < numModels
     % Assume the last one is for the full model, and ignore it
-    iters = numPreds - 1;
+    iters = numModels - 1;
+    rtype = 'R2';
 else
     iters = numPreds;
+    rtype = 'r';
 end
 
+if strcmp(rtype, 'R2')
 % Plot full model first
 figure();
+    plot(0:numUsed+1, zeros(size(0:numUsed+1)), '--'); % draw a line at 0
+    hold on;
     boxplot(results(:,useLabels,end));
+    hold off;
     xticklabels({roiLabels(useLabels).Label});
     title('Variance attributable to full model');
     ylabel('R2');
     xlabel('Region of Interest');
     xtickangle(30);
-    ylim([0 .4]); % It's unusual to go above 1%, but it may happen.
+    ylim([0 1]); % 0-100%. It's unusual to go above 1%, but it may happen.
+end
 
 % Then plot individual predictors
 if numPreds > 1
 for i = 1:iters
     predName = predList{i};
     figure();
-    boxplot((results(:,useLabels,end) - results(:,useLabels,i)) ./ results(:,useLabels, end));
+    if strcmp(rtype, 'R2')
+        plot(0:numUsed+1, zeros(size(0:numUsed+1)), '--'); % draw a line at 0
+        hold on;
+        boxplot((results(:,useLabels,end) - results(:,useLabels,i)));
+        hold off;
+        title(sprintf('Unique variance attributable to %s', predName));
+        ylabel('R2_f - R2_i');
+        ylim([0 1]);
+%         ytickformat('percentage');
+    elseif strcmp(rtype, 'r')
+        plot(0:numUsed+1, zeros(size(0:numUsed+1)), '--'); % draw a line at 0
+        hold on;
+        boxplot(results(:,useLabels, i));
+        hold off;
+        title(sprintf('Correlation of %s with timeseries', predName));
+        ylabel('Pearson''s r');
+        ylim([-1 1]);
+    end
     xticklabels({roiLabels(useLabels).Label});
-    title(sprintf('Proportion variance attributable to %s', predName));
-    ylabel('R2_f - R2_i / R2_f');
     xlabel('Region of Interest');
     xtickangle(30);
-    ylim([-1 1]);
-end
-end
     
+end
+
+% Make another figure grouping by ROI, across predictors
+warning('off', 'MATLAB:handle_graphics:Layout:NoPositionSetInTiledChartLayout');
+figure();
+tiledlayout(ceil(sqrt(numUsed) / 2), ceil(sqrt(numUsed) * 2));
+for i = find(useLabels)
+    nexttile;
+    plot(0:numModels + 1, zeros(size(0:numModels + 1)), '--');
+    hold on;
+    title(strrep(roiLabels(i).Label, '_', '\_'));
+    if strcmp(rtype, 'R2')
+        f0 = squeeze(results(:,i,end));
+        f1 = squeeze(results(:,i,1:end-1));
+        boxplot(100 * (f0 - f1) ./ f0);
+        ylabel('R2_f - R2_i / R2_f');
+        ytickformat('percentage');
+        ylim([-100 100]);
+        yticks(-100:25:100);
+    else
+        boxplot(results(:,i,:));
+        ylabel('Pearson''s r with timeseries');
+        ylim([-1 1]);
+    end
+    hold off;
+    xticklabels(predList);
+    xtickangle(30);
+end
+warning('on', 'MATLAB:handle_graphics:Layout:NoPositionSetInTiledChartLayout');
+end

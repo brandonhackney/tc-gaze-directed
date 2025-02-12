@@ -6,6 +6,8 @@ function [output, roiLabels, predList] = comparePredictors(varargin)
 % 5. Measure the similarity of predicted to actual data
 % 6. Cross-validate by leaving out each run independently
 % 7. Compare the effect of leaving each predictor out
+global randFlag
+predList = {'MotionFrame', 'Interact', 'TopDown', 'Rating'};
 
 hem1 = {'L', 'R'}; % different functions want different formats
 hem2 = {'lh', 'rh'};
@@ -40,8 +42,10 @@ end
 
 predCorr = [];
 for subNum = subList
-    % First, concatenate all runs for this subject into one big "fullPred"
-    [dataStack, roiLabels, fullPred, predList] = getDataStack(subNum, hem);
+    % First, concatenate all runs for this subject into one big stack
+    [dataStack, roiLabels] = getDataStack(subNum, hem);
+    % Same for predictors
+    [fullPred, predList] = getPredictorStack(subNum, predList);
     numPredictors = length(predList);
     numRuns = height(dataStack);
     
@@ -52,8 +56,9 @@ for subNum = subList
     
     for i = 1:numIter
         if randFlag
+            itime = tic;
             % Shuffle the rows of the predictor matrix for each iteration
-            fullPred = fullPred(randperm(height(fullPred)), :);
+            fullPred = getPredictorStack(subNum, predList);
         end
         fprintf(1, '\nCross-validating %i predictors:\n', numPredictors)
         % Now do some leave-one-out analyses
@@ -118,7 +123,11 @@ for subNum = subList
         if randFlag
             % Collapse the results for this iteration... somehow.
             % I guess just take the overall mean? But preserve predictors
-            thresh(subNum, i,:) = mean(subResults, [1,2], 'omitnan');
+%             thresh(subNum, i,:) = mean(subResults, [1,2], 'omitnan');
+            % NO: export the full-model R2, collapsing run, keeping ROI
+            thresh(subNum, i, :) = mean(subResults(:,:,end), 1, 'omitnan');
+            fprintf(1, 'Done with iteration %i of %i. ', i, numIter);
+            toc(itime);
         end
         
         
@@ -133,10 +142,10 @@ if randFlag
     % we want the simplest threshold possible,
     % so instead of an expected r2 for each predictor (i.e. full - limited)
     % we'll just take the full-model r2 and go from there.
-    output = thresh(:,:, end);
+    output = thresh;
     sd = std(output, 0, 'all', 'omitnan');
-    output = squeeze(mean(thresh, 1, 'omitnan')); % average across subjects
-    output = mean(output, 1, 'omitnan'); % average across ROIs, now in row1
+    output = squeeze(mean(thresh, [1 2], 'omitnan')); % average across subjects and iterations
+%     output = mean(output, 1, 'omitnan'); % average across ROIs, now in row1
     fprintf(1, '\n\nExpected mean =\t%0.4f\n', mean(output, 2));
     fprintf(1, 'Expected SD =\t%0.4f\n\n', sd);
 else

@@ -10,6 +10,7 @@ function [output, predList] = getSDM(subNum, runNum, predList)
 % ONLY the .txt files registered the stimulus name.
 % So we need to combine information from two files to get what we need.
 
+global randFlag
 if nargin < 3
     % % WHAT ARE YOU ANALYZING?? % %
     predList = {'MotionFrame', 'Interact', 'TopDown', 'Rating'};
@@ -71,6 +72,11 @@ for t = 1:numTrials
         x = strcmp({dataList.Name}, pname);
         sdm(subset,s) = dataList(x).Data;
     end
+end
+
+if randFlag
+    % Shuffle the order of the rows BEFORE applying the HRF
+    sdm = sdm(randperm(height(sdm)), :);
 end
 
 % Now you have a boxcar at 60Hz that needs to be:

@@ -8,8 +8,8 @@ function boxplotROIs(results, roiLabels, predList)
 useLabels = [2, 7, 157, 4, 3, 158, 24, 129, 130, 131, 140, 141, 142, 11, 21, 22, 160];
 useLabels = ismember(1:length(roiLabels), useLabels); % convert to logical
 % useLabels = 1:length(roiLabels); % use all
-% useLabels = max(results(:,:,end),[],1) > .2; % if any sub above threshold
-useLabels = mean(results(:,:,end), 1, 'omitnan') > .01; % threshold picked via permutation testing
+% useLabels = max(results(:,:,end),[],1) > .0484; % if any sub above threshold
+% useLabels = mean(results(:,:,end), 1, 'omitnan') > .0484; % threshold picked via permutation testing
 numUsed = sum(useLabels);
 
 numModels = size(results, 3);
@@ -21,6 +21,14 @@ if numPreds < numModels
 else
     iters = numPreds;
     rtype = 'r';
+end
+
+% Preprocess roi names
+for i = 1:length(roiLabels)
+    x = roiLabels(i).Label;
+    x = erase(x, '_ROI');
+    x = x(3:end); % erase 'R_xxx' part
+    roiLabels(i).Label = x;
 end
 
 if strcmp(rtype, 'R2')
@@ -70,7 +78,7 @@ end
 % Make another figure grouping by ROI, across predictors
 warning('off', 'MATLAB:handle_graphics:Layout:NoPositionSetInTiledChartLayout');
 figure();
-tiledlayout(floor(sqrt(numUsed) / 2), ceil(sqrt(numUsed) * 2));
+tiledlayout(ceil(sqrt(numUsed) / 2), ceil(sqrt(numUsed) * 2));
 for i = find(useLabels)
     nexttile;
     plot(0:numModels + 1, zeros(size(0:numModels + 1)), '--');

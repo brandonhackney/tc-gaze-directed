@@ -1,4 +1,4 @@
-function [output, predList] = getSDM(subNum, runNum, predList)
+function [output, predList, chop] = getSDM(subNum, runNum, predList)
 % Generate a design matrix for fMRI analysis based on scan and stim data.
 % Given a subject number and run number, assuming a specific task,
 % find files indicating stimulus order, duration, etc.,
@@ -11,11 +11,24 @@ function [output, predList] = getSDM(subNum, runNum, predList)
 % So we need to combine information from two files to get what we need.
 
 global randFlag
+if nargout > 2
+    chopFlag = true;
+else
+    chopFlag = false;
+end
 if nargin < 3
     % % WHAT ARE YOU ANALYZING?? % %
     predList = {'MotionFrame', 'Interact', 'TopDown', 'Rating'};
 %     predList = {'MotionFrame', 'Fixation', 'Interact'};
     % % WHAT ARE YOU ANALYZING?? % %
+elseif ismember('Chop', predList)
+    % Bad code right here but...
+    % Drop Chop from predlist now, only to be inserted again later
+    predList(strcmp(predList, 'Chop')) = [];
+    chopFlag = true;
+    % Also load a list of videos to keep, based on eyetracking results
+    % These are videos where clarity ratings are most modulated by AQ score
+    load('sigVids.mat', 'sigVids');
 end
 numPreds = length(predList);
 
@@ -46,6 +59,12 @@ for t = 1:numTrials
     else
         flipFlag = 0;
     end
+    
+    % Skip any stim that wasn't significantly modulated by AQ
+    if chopFlag && ~ismember(stimName, sigVids)
+        continue
+    end
+    
     onset = dat.Time(t); % sec
     duration = dat.Duration(t); % sec
     endtime = dat.Offset(t); % sec
@@ -72,6 +91,18 @@ for t = 1:numTrials
         x = strcmp({dataList.Name}, pname);
         sdm(subset,s) = dataList(x).Data;
     end
+end
+
+if chopFlag
+    % return a list of timepoints to drop, based on the videos we skipped
+    chop = single(sdm(:,2) == 0);
+    chop = interp1(frameCol, chop, TRvec);
+    chop = logical(chop);
+    
+    % Insert this as a predictor in the design matrix
+    % Put it first so that it's treated as a confound
+    sdm = [single(sdm(:,2) == 0), sdm];
+    predList = ['Chop', predList];
 end
 
 if randFlag

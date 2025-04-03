@@ -1,4 +1,4 @@
-function [output, roiLabels, predList] = comparePredictors(varargin)
+function [output, roiLabels, predList] = comparePredictors(hem, varargin)
 % 1. Aggregate MRI data for all runs of a specific task 
 % 2. Regress out effects of nuisance parameters (like CSF signal)
 % 3. Estimate effect of parameters of interest on the residuals
@@ -12,9 +12,15 @@ predList = {'MotionFrame', 'Interact', 'TopDown', 'Rating'};
 hem1 = {'L', 'R'}; % different functions want different formats
 hem2 = {'lh', 'rh'};
 
-hem = 2; % 
+if nargin < 1
+    % Default hem is RH
+    hem = 2; 
+else
+    assert(isnumeric(hem), 'Input 1 must be a number 1 or 2 (Left or Right hemisphere)');
+    assert(hem < 3, 'Input 1 must be a number 1 or 2 (Left or Right hemisphere)');
+end
 numSubs = 0;
-if nargin > 0
+if nargin > 1
     % Allow a list of subjects to iterate over (even just one)
     subList = varargin{1};
     numSubs = length(subList);
@@ -24,7 +30,7 @@ if numSubs == 0
     numSubs = 30;
     subList = 1:numSubs;
 end
-if nargin > 1
+if nargin > 2
     randFlag = true;
     numIter = varargin{2};
     assert(isnumeric(numIter), 'Second input must be a number of random iterations to run');

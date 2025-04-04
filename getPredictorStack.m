@@ -1,4 +1,4 @@
-function [fullPred, predList, chop] = getPredictorStack(subNum, predList)
+function [fullPred, predList] = getPredictorStack(subNum, predList)
 
 numRuns = countRuns(subNum, 'tricopa');
 fullPred = [];
@@ -9,7 +9,7 @@ fprintf(1, 'Getting predictors for %i runs\n', numRuns);
 
 for r = 1:numRuns
     % Get the design matrix for each run
-    [tmpPred, predList, chop{r}] = getSDM(subNum, r, predList);
+    [tmpPred, predList] = getSDM(subNum, r, predList);
     tmpPred = zscore(tmpPred);
     % Insert an intercept column
     tmpPred = [ones(height(tmpPred), 1), tmpPred];

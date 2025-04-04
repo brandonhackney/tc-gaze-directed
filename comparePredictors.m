@@ -55,11 +55,11 @@ for subNum = subList
     numPredictors = length(predList);
     numRuns = height(dataStack);
     
-    % Chop out any rows that were dropped from the predictor matrix
-    % i.e. stimuli we are ignoring
-    for r = 1:numRuns
-        dataStack{r}(chop{r},:) = 0;
-    end
+%     % Chop out any rows that were dropped from the predictor matrix
+%     % i.e. stimuli we are ignoring
+%     for r = 1:numRuns
+%         dataStack{r}(chop{r},:) = 0;
+%     end
     
     % Analyze predictor collinearity
     predCorr(:,:,subNum) = corr(fullPred(:, 2:end-1), 'rows', 'complete');

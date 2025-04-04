@@ -1,26 +1,33 @@
 function output = getPredData(predList)
 % Variably load predictor data depending on which ones you're using.
 % This really only gets called by one function, but hey.
+% Using load() is a lot faster than importdata() when you know what's there
 
     output = struct();
     if any(strcmp(predList, 'MotionFrame')) || any(strcmp(predList, 'MotionAvg'))
-        output.motionTable = importdata('motionDataSum.mat'); % total, not avg
+        load('motionDataSum.mat', 'motion'); % total, not avg
+        output.motionTable = motion;
     end
     % motionTable = importdata('motionData.mat');
     if any(strcmp(predList, 'InteractAvg'))
-        output.interactTable = importdata('interactData.mat');
+        load('interactData.mat', 'intScore');
+        output.interactTable = intScore;
     end
     if any(strcmp(predList, 'Rating'))
-        output.ratingTable = importdata('rateData.mat');
+        load('rateData.mat', 'ratings');
+        output.ratingTable = ratings;
     end
     if any(strcmp(predList, 'Interact'))
-        output.interactTable2 = importdata('interactVectors.mat');
+        load('interactVectors.mat', 'intVectors');
+        output.interactTable2 = intVectors;
     end
     if any(contains(predList, 'TopDown'))
-        output.deviatTable = importdata('devData.mat');
+        load('devData.mat', 'deviance');
+        output.deviatTable = deviance;
     end
     if any(contains(predList, 'Fixation'))
-        output.fixationTable = importdata('fixationData.mat');
+        load('fixationData.mat', 'fixations');
+        output.fixationTable = fixations;
     end
     % ...add any new metrics here
     

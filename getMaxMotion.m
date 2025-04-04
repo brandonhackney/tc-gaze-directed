@@ -5,9 +5,10 @@ function val = getMaxMotion(motionTable)
 % so we can rescale everything to a more reasonable 0:1
 % instead of the current average 1e-4 or whatever.
 numStims = height(motionTable);
-bigVector = [];
-for i = 1:numStims
-    bigVector(i) = max(motionTable.MotionEnergy{i});
-end
+% bigVector = zeros([numStims, 1]);
+bigVector = cellfun(@max, motionTable.MotionEnergy);
+% for i = 1:numStims
+%     bigVector(i) = max(motionTable.MotionEnergy{i});
+% end
 val = max(bigVector);
 end

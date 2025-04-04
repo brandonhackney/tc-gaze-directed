@@ -4,10 +4,12 @@ function boxplotROIs(results, roiLabels, predList)
 % Generates a separate figure for every predictor
 
 % Define a list of ROIs we care about:
-% V1, V4, V4t, V6, MST, FST, MT, 3 STS regions and 3 TPOJ regions
-% useLabels = [2, 7, 157, 4, 3, 158, 24, 129, 130, 131, 140, 141, 142];
-% useLabels = 1:length(roiLabels);
-useLabels = max(results(:,:,end),[],1) > .2;
+% V1, V4, V4t, V6, MST, FST, MT, 3 STS regions, 3 TPOJ regions, FEF, LO1-3
+% useLabels = [2, 7, 157, 4, 3, 158, 24, 129, 130, 131, 140, 141, 142, 11, 21, 22, 160];
+% useLabels = ismember(1:length(roiLabels), useLabels); % convert to logical
+useLabels = 1:length(roiLabels); % use all
+useLabels = max(results(:,:,end),[],1) > .2; % if any sub above an arbitrary threshold
+% useLabels = mean(results(:,:,end), 1, 'omitnan') > .0484; % threshold picked via permutation testing
 numUsed = sum(useLabels);
 
 numModels = size(results, 3);
@@ -19,6 +21,14 @@ if numPreds < numModels
 else
     iters = numPreds;
     rtype = 'r';
+end
+
+% Preprocess roi names
+for i = 1:length(roiLabels)
+    x = roiLabels(i).Label;
+    x = erase(x, '_ROI');
+    x = x(3:end); % erase 'R_xxx' part
+    roiLabels(i).Label = x;
 end
 
 if strcmp(rtype, 'R2')
@@ -48,7 +58,7 @@ for i = 1:iters
         hold off;
         title(sprintf('Unique variance attributable to %s', predName));
         ylabel('R2_f - R2_i');
-        ylim([0 1]);
+        ylim([-.05 .5]);
 %         ytickformat('percentage');
     elseif strcmp(rtype, 'r')
         plot(0:numUsed+1, zeros(size(0:numUsed+1)), '--'); % draw a line at 0
@@ -77,11 +87,10 @@ for i = find(useLabels)
     if strcmp(rtype, 'R2')
         f0 = squeeze(results(:,i,end));
         f1 = squeeze(results(:,i,1:end-1));
-        boxplot(100 * (f0 - f1) ./ f0);
-        ylabel('R2_f - R2_i / R2_f');
-        ytickformat('percentage');
-        ylim([-100 100]);
-        yticks(-100:25:100);
+        boxplot(f0 - f1);
+        ylabel('R2_f - R2_i');
+        ylim([-.05 .3]);
+        yticks(-.05:.025:.3);
     else
         boxplot(results(:,i,:));
         ylabel('Pearson''s r with timeseries');

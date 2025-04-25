@@ -130,6 +130,7 @@ for p = 1:length(predNames)
             data = ones(duration, 1);
         case 'Fixation'
             data = params.fixationTable.ScaledFixation(strcmp(params.fixationTable.StimName, stimName)); % scalar
+            data = ones(duration, 1) .* data;
         case 'MotionFrame'
             motion2 = params.motionTable.MotionEnergy{strcmp(params.motionTable.StimName, stimName)}; % vector
             maxMotion = getMaxMotion(params.motionTable);
@@ -137,14 +138,17 @@ for p = 1:length(predNames)
         case 'MotionAvg'
             data = buildDataList({'MotionFrame'}, stimName, duration, params);
             data = mean(data, 1);
+            data = ones(duration, 1) .* data;
         case 'Interact'
             data = params.interactTable2.Interactivity{strcmp(params.interactTable2.StimName, stimName)}; % vector
         case 'InteractAvg'
             data = params.interactTable.Interactivity(strcmp(params.interactTable.StimName, stimName)); % scalar
+            data = ones(duration, 1) .* data;
         case 'Rating'
             data = params.ratingTable.Rating(strcmp(params.ratingTable.StimName, stimName)); % scalar
             maxRating = 5;
             data = data ./ maxRating;
+            data = ones(duration, 1) .* data;
         case 'TopDown'
             data = params.deviatTable.Deviance{strcmp(params.deviatTable.StimName, stimName)}; % vector
             data = interp1(linspace(1,duration,length(data)), data, 1:duration);

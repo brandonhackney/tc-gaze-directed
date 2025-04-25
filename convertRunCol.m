@@ -6,7 +6,7 @@ function [output] = convertRunCol(input)
 % Also removes the second-to-last column, if it's a constant (i.e. all 1s)
 % Output is then N * (M+R-2)
     numPred = width(input) - 1;
-    if numPred > 0 && input(:,end-1) == ones(size(input,1),1)
+    if numPred > 0 && isequal(input(:,end-1), ones(size(input,1),1))
         % Remove constant column to avoid near-singular matrices
         input(:,end-1) = [];
     end

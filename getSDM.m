@@ -161,6 +161,13 @@ for p = 1:length(predNames)
             data = buildDataList({'TopDown'}, stimName, duration, params);
             data = double(data >= 83.81); % 2 deg visual angle from exp.
             data(data > 1) = 1; % saturation
+        case 'ToM'
+            % The coefficient on AQ predicting this video's rating
+            % If high AQ means hampered ToM, then AQ predicting rating
+            % means that the video relies on ToM somehow. So the
+            % coefficient becomes your predictor of ToM use.
+            data = params.tomTable.CommBeta(strcmp(params.tomTable.StimName, stimName)); % scalar
+            data = ones(duration, 1) .* data;
         case 'Onset'
             data = zeros(duration, 1);
             data(1) = 1;

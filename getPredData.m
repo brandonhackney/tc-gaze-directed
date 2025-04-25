@@ -29,6 +29,11 @@ function output = getPredData(predList)
         load('fixationData.mat', 'fixations');
         output.fixationTable = fixations;
     end
+    if any(contains(predList, 'ToM'))
+        load('tomData.mat', 'ToM');
+        output.tomTable = ToM;
+        output.tomTable.CommBeta = zscore(output.tomTable.CommBeta);
+    end
     % ...add any new metrics here
     
 end % function

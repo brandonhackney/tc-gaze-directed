@@ -51,7 +51,7 @@ for subNum = subList
     % First, concatenate all runs for this subject into one big stack
     [dataStack, roiLabels] = getDataStack(subNum, hem);
     % Same for predictors
-    [fullPred, predList, chop] = getPredictorStack(subNum, predList);
+    [fullPred, predList] = getPredictorStack(subNum, predList);
     numPredictors = length(predList);
     numRuns = height(dataStack);
     
@@ -129,6 +129,7 @@ for subNum = subList
 
             % After iterating over left-out runs, return the model fits
             % This varies by ROI, so we'll need to do an analysis later
+            % subResults is (run, ROI, model)
             subResults(:,:,p) = iterFits; % where p is the left-out model parameter
             bics(p) = mean(iterBICs);
         end
@@ -137,6 +138,7 @@ for subNum = subList
             % I guess just take the overall mean? But preserve predictors
 %             thresh(subNum, i,:) = mean(subResults, [1,2], 'omitnan');
             % NO: export the full-model R2, collapsing run, keeping ROI
+            % thresh is then subNum, iteration, ROI
             thresh(subNum, i, :) = mean(subResults(:,:,end), 1, 'omitnan');
             fprintf(1, 'Done with iteration %i of %i. ', i, numIter);
             toc(itime);
@@ -150,17 +152,32 @@ for subNum = subList
 end % subject
 
 if randFlag
-    % thresh is the r2 for all predictors AND the full model
-    % we want the simplest threshold possible,
-    % so instead of an expected r2 for each predictor (i.e. full - limited)
-    % we'll just take the full-model r2 and go from there.
-    output = thresh;
-    sd = std(output, 0, 'all', 'omitnan');
-    output = squeeze(mean(thresh, [1 2], 'omitnan')); % average across subjects and iterations
-%     output = mean(output, 1, 'omitnan'); % average across ROIs, now in row1
-    fprintf(1, '\n\nExpected mean =\t%0.4f\n', mean(output, 2));
-    fprintf(1, 'Expected SD =\t%0.4f\n\n', sd);
+    try
+        % Determine a selection threshold based on the 95th percentile of r2s.
+        % thresh is the r2 for the full model only, org as (sub iter ROI)
+        % we want the simplest threshold possible,
+        % so instead of exporting an expected r2 for each ROI,
+        % we'll average across the whole brain. But not as a first step.
+        % Average over subjects first,
+        output = squeeze(mean(thresh, 1, 'omitnan'));
+        % then sort each ROI independently and take the value at position 95%,
+        % considering it's now (iter, ROI), default sort() behavior works.
+        output = sort(output);
+        critInd = floor(.95 * numIter);
+            if critInd < 1
+                % unlikely scenario but
+                critInd = 1;
+                fprintf(1, 'Warning! Only 1 iteration performed??\n')
+            end
+        % then average across ROIs to get your final whole-brain threshold.
+        output = mean(output(critInd, :), 'omitnan');
+        fprintf(1, '\n\nExpected R2 =\t%0.4f\n', output);
+    catch ME
+        output = thresh;
+        ME
+    end
 else
+
 
 % Now after iterating over left-out predictors, compare model fits
 scoreComparison(results, roiLabels, predList);

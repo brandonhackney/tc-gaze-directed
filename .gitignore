@@ -5,6 +5,10 @@
 *~
 *.tmp
 
+# Archives etc
+*.tar.gz
+*.zip
+
 # Left by RStudio
 .Rhistory
 
@@ -13,3 +17,5 @@
 *.gii
 *.nii
 hidden
+Results
+Figures

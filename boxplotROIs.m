@@ -3,14 +3,23 @@ function boxplotROIs(results, roiLabels, predList)
 % This visualizes the results as a boxplot, with variance across subs
 % Generates a separate figure for every predictor
 
+% Define a threshold on R2 to determine which ROIs to display
+% thresh = 0.15; % arbitrary
+thresh = .0484; % from permutation testing 1000 times
+
 % Define a list of ROIs we care about:
 % V1, V4, V4t, V6, MST, FST, MT, 3 STS regions, 3 TPOJ regions, FEF, LO1-3
 % useLabels = [2, 7, 157, 4, 3, 158, 24, 129, 130, 131, 140, 141, 142, 11, 21, 22, 160];
 % useLabels = ismember(1:length(roiLabels), useLabels); % convert to logical
-useLabels = 1:length(roiLabels); % use all
-useLabels = max(results(:,:,end),[],1) > .2; % if any sub above an arbitrary threshold
-% useLabels = mean(results(:,:,end), 1, 'omitnan') > .0484; % threshold picked via permutation testing
+% useLabels = 1:length(roiLabels); % use all
+% useLabels = max(results(:,:,end),[],1) > thresh; % if any sub above a more stringent threshold
+useLabels = mean(results(:,:,end), 1, 'omitnan') > thresh; % threshold picked via permutation testing
 numUsed = sum(useLabels);
+
+if numUsed < 1
+    fprintf(1, 'No ROIs pass threshold of %0.4f! Skipping plots.\n', thresh);
+    return
+end
 
 numModels = size(results, 3);
 numPreds = length(predList);
@@ -58,7 +67,7 @@ for i = 1:iters
         hold off;
         title(sprintf('Unique variance attributable to %s', predName));
         ylabel('R2_f - R2_i');
-        ylim([-.05 .5]);
+        ylim([-.1 .5]);
 %         ytickformat('percentage');
     elseif strcmp(rtype, 'r')
         plot(0:numUsed+1, zeros(size(0:numUsed+1)), '--'); % draw a line at 0
@@ -89,8 +98,8 @@ for i = find(useLabels)
         f1 = squeeze(results(:,i,1:end-1));
         boxplot(f0 - f1);
         ylabel('R2_f - R2_i');
-        ylim([-.05 .3]);
-        yticks(-.05:.025:.3);
+        ylim([-.1 .3]);
+        yticks(-.1:.05:.3);
     else
         boxplot(results(:,i,:));
         ylabel('Pearson''s r with timeseries');

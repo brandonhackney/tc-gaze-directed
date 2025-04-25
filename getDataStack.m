@@ -1,5 +1,11 @@
-function [dataStack,  roiLabels] = getDataStack(subNum, hem)
+function [dataStack,  roiLabels] = getDataStack(subNum, hem, varargin)
 % Extract data for this subject, subset to ROIs, and get design matrix
+
+if nargin > 2
+    dspace = varargin{1};
+else
+    dspace = [];
+end
 
 numRuns = countRuns(subNum, 'tricopa');   
 dataStack = cell(numRuns, 1);
@@ -27,7 +33,7 @@ for r = 1:numRuns
 
       % % DATA:
         % Load the actual MRI data for all runs
-        dataStack{r} = loadData(subNum, r, hem1{hem});
+        dataStack{r} = loadData(subNum, r, hem1{hem}, dspace);
         
 %%%%%%%%% TEST
         % Replace the real data with random data

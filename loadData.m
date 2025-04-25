@@ -10,10 +10,19 @@ else
     hemi = 'R';
 end
 
+if nargin > 3 && ~isempty(varargin{2})
+    % What space do you want the data in?
+    % fsaverage or fsnative
+    % (we have some MNI data, but not a bold.func.gii)
+    dspace = varargin{2};
+else
+    dspace = 'fsaverage';
+end
+
 % Generate a filename and find the full path to it
 pths = specifyPaths;
 subID = sprintf('sub-%02.f', sub);
-name = ['hemi-', hemi, '_space-fsaverage_bold.func.gii'];
+name = ['hemi-', hemi, '_space-', dspace '_bold.func.gii'];
 fname = findSubData(pths, subID, run, name);
 
 % Load gifti data using NIH's plugin

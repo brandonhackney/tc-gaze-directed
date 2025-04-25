@@ -1,4 +1,4 @@
-function [varargout] = simpleGLM(timeseries,designmatrix,lambda)
+function [varargout] = simpleGLM(timeseries,designmatrix,lambda, contrast)
 % [betas, residuals, R2] = simpleGLM(timeseries,designmatrix,(lambda))
 % Intended to take a whole-brain timeseries and compute a GLM contrast
 % INPUTS:
@@ -50,6 +50,12 @@ function [varargout] = simpleGLM(timeseries,designmatrix,lambda)
                 SS_total = sum((timeseries - mean(timeseries)).^2, 1);
                 SS_residual = sum(residuals.^2, 1);
                 varargout{i} = 1 - (SS_residual ./ SS_total);
+            case 4
+                % Calculate tMap
+                if nargin < 4
+                    contrast = ones(1,width(designmatrix));
+                end
+                varargout{i} = (contrast * betas) ./ sqrt((std(residuals).^2) .* (contrast / (designmatrix' * designmatrix) * contrast'));
             otherwise
                 warning('Too many output arguments. Options are [betas,residuals, R2]. Extra outputs ignored.')
                 break

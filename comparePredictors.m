@@ -51,7 +51,7 @@ for subNum = subList
     % First, concatenate all runs for this subject into one big stack
     [dataStack, roiLabels] = getDataStack(subNum, hem);
     % Same for predictors
-    [fullPred, predList, chop] = getPredictorStack(subNum, predList);
+    [fullPred, predList] = getPredictorStack(subNum, predList);
     numPredictors = length(predList);
     numRuns = height(dataStack);
     
